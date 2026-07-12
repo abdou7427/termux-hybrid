@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
 <com.termux.app.terminal.TermuxActivityRootView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
@@ -23,16 +24,44 @@
             android:layout_above="@+id/terminal_toolbar_view_pager"
             android:layout_height="match_parent">
 
-            <com.termux.view.TerminalView
-                android:id="@+id/terminal_view"
+            <!-- الحاوية المدمجة الجديدة للتبديل بين الترمينال والويب -->
+            <FrameLayout
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:defaultFocusHighlightEnabled="false"
-                android:focusableInTouchMode="true"
-                android:scrollbarThumbVertical="@drawable/terminal_scroll_shape"
-                android:scrollbars="vertical"
-                tools:ignore="UnusedAttribute" />
+                android:layout_height="match_parent">
 
+                <!-- واجهة تيرمكس الأصلية (مخفية تلقائياً في البداية) -->
+                <com.termux.view.TerminalView
+                    android:id="@+id/terminal_view"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:defaultFocusHighlightEnabled="false"
+                    android:focusableInTouchMode="true"
+                    android:scrollbarThumbVertical="@drawable/terminal_scroll_shape"
+                    android:scrollbars="vertical"
+                    android:visibility="gone"
+                    tools:ignore="UnusedAttribute" />
+
+                <!-- واجهة الويب التفاعلية المدمجة (ظاهرة افتراضياً) -->
+                <WebView
+                    android:id="@+id/hybrid_webview"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:visibility="visible" />
+
+                <!-- زر التبديل العائم للتنقل بضغطة زر واحدة -->
+                <com.google.android.material.floatingactionbutton.FloatingActionButton
+                    android:id="@+id/btn_toggle_view"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="bottom|end"
+                    android:layout_margin="16dp"
+                    android:contentDescription="Toggle Terminal/WebView"
+                    app:srcCompat="@android:drawable/ic_menu_compass"
+                    app:backgroundTint="?attr/colorPrimary" />
+
+            </FrameLayout>
+
+            <!-- القائمة الجانبية الأصلية لتيرمكس (لم يتم حذف شيء منها) -->
             <LinearLayout
                 android:id="@+id/left_drawer"
                 android:layout_width="240dp"
