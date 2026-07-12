@@ -67,6 +67,11 @@ import androidx.viewpager.widget.ViewPager;
 
 import java.util.Arrays;
 
+import android.view.View;
+import android.webkit.WebChromeClient;
+import android.webkit.WebView;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
+
 /**
  * A terminal emulator activity.
  * <p/>
@@ -214,6 +219,47 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         super.onCreate(savedInstanceState);
 
         setContentView(R.layout.activity_termux);
+        // ============================================================
+        // HYBRID WEBVIEW INTEGRATION — INSERT THIS BLOCK INTO onCreate
+        // ============================================================
+
+        WebView webView = findViewById(R.id.hybrid_webview);
+        FloatingActionButton toggleBtn = findViewById(R.id.btn_toggle_view);
+
+        // WebView settings
+        webView.getSettings().setJavaScriptEnabled(true);
+        webView.getSettings().setDomStorageEnabled(true);
+        webView.getSettings().setAllowFileAccess(true);
+        webView.setWebChromeClient(new WebChromeClient());
+
+        // Attach the bridge so JS can call window.TermuxBridge.exec("...")
+        webView.addJavascriptInterface(new WebViewBridge(this), "TermuxBridge");
+
+        // Load your interactive web UI (local asset or remote URL)
+        // Option A: Load from app/src/main/assets/webui/index.html
+        webView.loadUrl("file:///android_asset/webui/index.html");
+
+        // Option B: Load a remote dashboard
+        // webView.loadUrl("https://your-dashboard.example.com");
+
+        // Toggle logic: WebView <-> Terminal
+        toggleBtn.setOnClickListener(v -> {
+            if (webView.getVisibility() == View.VISIBLE) {
+                webView.setVisibility(View.GONE);
+                findViewById(R.id.terminal_view).setVisibility(View.VISIBLE);
+                toggleBtn.setImageResource(android.R.drawable.ic_menu_view);
+                // Auto-focus terminal for keyboard input
+                mTerminalView.requestFocus();
+            } else {
+                findViewById(R.id.terminal_view).setVisibility(View.GONE);
+                webView.setVisibility(View.VISIBLE);
+                toggleBtn.setImageResource(android.R.drawable.ic_menu_close_clear_cancel);
+            }
+        });
+
+        // ============================================================
+        // END HYBRID WEBVIEW INTEGRATION
+        // ============================================================
 
         // Load termux shared preferences
         // This will also fail if TermuxConstants.TERMUX_PACKAGE_NAME does not equal applicationId
