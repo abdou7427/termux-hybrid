@@ -12,7 +12,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     
-    # Grant write permission for creating releases
     permissions:
       contents: write
 
@@ -48,7 +47,6 @@ jobs:
       - name: Build Debug APK
         run: ./gradlew assembleDebug --no-daemon --stacktrace
 
-      # FIX: Use unique artifact name per run to avoid 409 conflicts
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
