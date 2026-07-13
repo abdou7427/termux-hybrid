@@ -2,10 +2,10 @@ package com.termux.app;
 
 import android.webkit.JavascriptInterface;
 import com.termux.terminal.TerminalSession;
-import java.nio.charset.Charset;
 
 /**
  * JavascriptInterface bridge that pipes web commands into the active Termux shell.
+ * Compatible with Termux's TerminalSession.write(String) API.
  */
 public class WebViewBridge {
     private TermuxActivity mActivity;
@@ -15,61 +15,40 @@ public class WebViewBridge {
     }
 
     /**
-     * Helper method to safely retrieve the active terminal session from TermuxActivity
-     */
-    private TerminalSession getActiveSession() {
-        if (mActivity == null) return null;
-        
-        if (mActivity.getTerminalView() != null) {
-            return mActivity.getTerminalView().getCurrentSession();
-        }
-        
-        try {
-            java.lang.reflect.Method method = mActivity.getClass().getMethod("getCurrentSession");
-            return (TerminalSession) method.invoke(mActivity);
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    /**
      * Called from JavaScript: window.TermuxBridge.exec("ls -la");
+     * Appends a newline so the shell executes the command immediately.
      */
     @JavascriptInterface
     public void exec(String command) {
         if (command == null || command.isEmpty()) return;
 
-        mActivity.runOnUiThread(() -> {
-            TerminalSession session = getActiveSession();
-            if (session != null) {
-                String payload = command + "\n";
-                byte[] bytes = payload.getBytes(Charset.defaultCharset());
-                session.write(bytes, bytes.length);
-            }
-        });
+        TerminalSession session = mActivity.getCurrentSession();
+        if (session != null) {
+            // TerminalOutput.write(String) is the correct API
+            session.write(command + "\n");
+        }
     }
 
     /**
      * Called from JavaScript: window.TermuxBridge.type("pkg install ");
+     * Sends raw text without pressing Enter (useful for partial input).
      */
     @JavascriptInterface
     public void type(String text) {
         if (text == null) return;
 
-        mActivity.runOnUiThread(() -> {
-            TerminalSession session = getActiveSession();
-            if (session != null) {
-                byte[] bytes = text.getBytes(Charset.defaultCharset());
-                session.write(bytes, bytes.length);
-            }
-        });
+        TerminalSession session = mActivity.getCurrentSession();
+        if (session != null) {
+            session.write(text);
+        }
     }
 
     /**
-     * Returns the current shell PID to the web layer (Static fallback to avoid missing method crashes).
+     * Returns the current shell PID to the web layer.
      */
     @JavascriptInterface
     public int getShellPid() {
-        return -1;
+        TerminalSession session = mActivity.getCurrentSession();
+        return (session != null) ? session.getShellPid() : -1;
     }
 }
