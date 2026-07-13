@@ -58,6 +58,8 @@ import com.termux.terminal.TerminalSession;
 import com.termux.terminal.TerminalSessionClient;
 import com.termux.view.TerminalView;
 import com.termux.view.TerminalViewClient;
+import com.termux.app.WebViewBridge;
+
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -189,6 +191,15 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     private float mTerminalToolbarDefaultHeight;
 
+        // HYBRID MODE - "server" for development, "assets" for production
+    private static final String HYBRID_MODE = "server";
+    private WebView mAiWebView;
+    private WebView mControlWebView;
+    private WebView mCustomWebView;
+    private WebView mBrowserWebView;
+    private LinearLayout mBrowserContainer;
+    
+
 
     private static final int CONTEXT_MENU_SELECT_URL_ID = 0;
     private static final int CONTEXT_MENU_SHARE_TRANSCRIPT_ID = 1;
@@ -229,21 +240,18 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
         setContentView(R.layout.activity_termux);
         
-
         // ============================================================
-        // HYBRID SYSTEM - ADD THIS BLOCK
+        // HYBRID SYSTEM INITIALIZATION
         // ============================================================
-
-        // Initialize WebViews
-        WebView aiWebView = findViewById(R.id.hybrid_webview);
-        WebView controlWebView = findViewById(R.id.kimi_control_webview);
-        WebView customWebView = findViewById(R.id.custom_lab_webview);
-        WebView browserWebView = findViewById(R.id.browser_webview);
-        LinearLayout browserContainer = findViewById(R.id.browser_popup_container);
+        
+        mAiWebView = findViewById(R.id.hybrid_webview);
+        mControlWebView = findViewById(R.id.kimi_control_webview);
+        mCustomWebView = findViewById(R.id.custom_lab_webview);
+        mBrowserWebView = findViewById(R.id.browser_webview);
+        mBrowserContainer = findViewById(R.id.browser_popup_container);
         Toolbar browserToolbar = findViewById(R.id.browser_toolbar);
 
-        // Configure all WebViews
-        WebView[] allWebViews = {aiWebView, controlWebView, customWebView, browserWebView};
+        WebView[] allWebViews = {mAiWebView, mControlWebView, mCustomWebView, mBrowserWebView};
         for (WebView wv : allWebViews) {
             WebSettings ws = wv.getSettings();
             ws.setJavaScriptEnabled(true);
@@ -254,33 +262,33 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             wv.addJavascriptInterface(new WebViewBridge(this), "TermuxBridge");
         }
 
-        // Load local server URLs
-        aiWebView.loadUrl("http://127.0.0.1:8089/ai_agent.html");
-        controlWebView.loadUrl("http://127.0.0.1:8089/control.html");
-        customWebView.loadUrl("http://127.0.0.1:8089/custom.html");
+        if (HYBRID_MODE.equals("server")) {
+            mAiWebView.loadUrl("http://127.0.0.1:8089/ai_agent.html");
+            mControlWebView.loadUrl("http://127.0.0.1:8089/control.html");
+            mCustomWebView.loadUrl("http://127.0.0.1:8089/custom.html");
+        } else {
+            mAiWebView.loadUrl("file:///android_asset/webui/ai_agent.html");
+            mControlWebView.loadUrl("file:///android_asset/webui/control.html");
+            mCustomWebView.loadUrl("file:///android_asset/webui/custom.html");
+        }
 
-        // Browser popup close
         browserToolbar.setNavigationOnClickListener(v -> {
-            browserContainer.setVisibility(View.GONE);
-            browserWebView.loadUrl("about:blank");
+            mBrowserContainer.setVisibility(View.GONE);
+            mBrowserWebView.loadUrl("about:blank");
         });
 
-        // Drawer buttons
-        findViewById(R.id.btn_switch_to_webview).setOnClickListener(v -> switchToView(aiWebView));
-        findViewById(R.id.btn_switch_to_control).setOnClickListener(v -> switchToView(controlWebView));
-        findViewById(R.id.btn_switch_to_custom_lab).setOnClickListener(v -> switchToView(customWebView));
+        findViewById(R.id.btn_switch_to_webview).setOnClickListener(v -> switchToView(mAiWebView));
+        findViewById(R.id.btn_switch_to_control).setOnClickListener(v -> switchToView(mControlWebView));
+        findViewById(R.id.btn_switch_to_custom_lab).setOnClickListener(v -> switchToView(mCustomWebView));
         findViewById(R.id.btn_switch_to_terminal).setOnClickListener(v -> switchToView(null));
 
-        // Settings button
         findViewById(R.id.settings_button).setOnClickListener(v -> showSettingsPopup());
-
-        // Fix: terminal_sessions_list instead of left_drawer
-        // Find the line that references sessions list and ensure it uses:
-        // ListView mListView = findViewById(R.id.terminal_sessions_list);
 
         // ============================================================
         // END HYBRID SYSTEM
         // ============================================================
+        
+        
         
 
         
@@ -631,13 +639,10 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     }
 
 
-
-    private void setSettingsButtonView() {
-        ImageButton settingsButton = findViewById(R.id.settings_button);
-        settingsButton.setOnClickListener(v -> {
-            ActivityUtils.startActivity(this, new Intent(this, SettingsActivity.class));
-        });
+    private void setSettingsButtonView(){
+    // Handled by initializeHybridSystem
     }
+    
 
     private void setNewSessionButtonView() {
         View newSessionButton = findViewById(R.id.new_session_button);
@@ -1079,30 +1084,26 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         return intent;
     }
 
-    /**
-    * Switch between environments
-    */
+    
+     /**
+     * Switch between environments
+     */
     private void switchToView(WebView targetWebView) {
         DrawerLayout drawer = findViewById(R.id.drawer_layout);
-        WebView aiWebView = findViewById(R.id.hybrid_webview);
-        WebView controlWebView = findViewById(R.id.kimi_control_webview);
-        WebView customWebView = findViewById(R.id.custom_lab_webview);
-        LinearLayout browserContainer = findViewById(R.id.browser_popup_container);
-        View terminalView = findViewById(R.id.terminal_view);
 
         // Hide all
-        aiWebView.setVisibility(View.GONE);
-        controlWebView.setVisibility(View.GONE);
-        customWebView.setVisibility(View.GONE);
-        browserContainer.setVisibility(View.GONE);
+        mAiWebView.setVisibility(View.GONE);
+        mControlWebView.setVisibility(View.GONE);
+        mCustomWebView.setVisibility(View.GONE);
+        mBrowserContainer.setVisibility(View.GONE);
 
         if (targetWebView == null) {
             // Terminal mode
-            terminalView.setVisibility(View.VISIBLE);
+            mTerminalView.setVisibility(View.VISIBLE);
             mTerminalView.requestFocus();
         } else {
             // Web mode
-            terminalView.setVisibility(View.GONE);
+            mTerminalView.setVisibility(View.GONE);
             targetWebView.setVisibility(View.VISIBLE);
             targetWebView.requestFocus();
         }
@@ -1110,7 +1111,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         drawer.closeDrawer(GravityCompat.START);
     }
 
-    /**
+     /**
      * Show settings popup
      */
     private void showSettingsPopup() {
@@ -1119,7 +1120,12 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         WebSettings ws = settingsWebView.getSettings();
         ws.setJavaScriptEnabled(true);
         settingsWebView.addJavascriptInterface(new WebViewBridge(this), "TermuxBridge");
-        settingsWebView.loadUrl("http://127.0.0.1:8089/settings.html");
+        
+        if (HYBRID_MODE.equals("server")) {
+            settingsWebView.loadUrl("http://127.0.0.1:8089/settings.html");
+        } else {
+            settingsWebView.loadUrl("file:///android_asset/webui/settings.html");
+        }
 
         builder.setTitle("⚙️ Settings")
                .setView(settingsWebView)
@@ -1129,17 +1135,15 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
                .setNegativeButton("Close", null)
                .show();
     }
-
-    /**
+    
+     /**
      * Open browser popup
      */
     public void openBrowserPopup(String url) {
         runOnUiThread(() -> {
-            WebView browserWebView = findViewById(R.id.browser_webview);
-            LinearLayout browserContainer = findViewById(R.id.browser_popup_container);
-            browserContainer.setVisibility(View.VISIBLE);
-            browserWebView.bringToFront();
-            browserWebView.loadUrl(url);
+            mBrowserContainer.setVisibility(View.VISIBLE);
+            mBrowserWebView.bringToFront();
+            mBrowserWebView.loadUrl(url);
         });
     }
  
