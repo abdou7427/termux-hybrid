@@ -206,9 +206,8 @@
             </intent-filter>
             <meta-data
                 android:name="android.accessibilityservice"
-                android:resource="@xml/accessibility_service_config" />
+                android:value="flagDefault|flagRetrieveInteractiveWindows|flagReportViewIds" />
         </service>
-
 
         <service
             android:name=".HybridNotificationService"
