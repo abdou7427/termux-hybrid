@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     
-    # REQUIRED: Grant the action permission to create releases
+    # Grant write permission for creating releases
     permissions:
       contents: write
 
@@ -48,54 +48,21 @@ jobs:
       - name: Build Debug APK
         run: ./gradlew assembleDebug --no-daemon --stacktrace
 
+      # FIX: Use unique artifact name per run to avoid 409 conflicts
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: termux-hybrid-apk
+          name: termux-hybrid-apk-${{ github.run_number }}-${{ github.run_attempt }}
           path: app/build/outputs/apk/debug/*.apk
           retention-days: 7
+          overwrite: true
 
       - name: Create Release
         if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: hybrid-${{ github.run_number }}
-          name: Hybrid Build ${{ github.run_number }}
-          files: app/build/outputs/apk/debug/*.apk
-          generate_release_notes: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      # 4. Set up Android SDK (command-line tools)
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-        with:
-          cmdline-tools-version: '11076708'
-          packages: 'platforms;android-34 build-tools;34.0.0 platform-tools ndk;26.1.10909125'
-
-      # 5. Accept SDK licenses
-      - name: Accept Android Licenses
-        run: yes | sdkmanager --licenses || true
-
-      # 6. Build Debug APK (auto-signed by Gradle)
-      - name: Build Debug APK
-        run: ./gradlew assembleDebug --no-daemon --stacktrace
-
-      # 7. Upload APK artifact
-      - name: Upload APK Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: termux-hybrid-apk
-          path: app/build/outputs/apk/debug/*.apk
-          retention-days: 7
-
-      # 8. Create GitHub Release (only on push to main/master)
-      - name: Create Release
-        if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: hybrid-${{ github.run_number }}
-          name: Hybrid Build ${{ github.run_number }}
+          tag_name: hybrid-${{ github.run_number }}-${{ github.run_attempt }}
+          name: Hybrid Build ${{ github.run_number }}.${{ github.run_attempt }}
           files: app/build/outputs/apk/debug/*.apk
           generate_release_notes: true
         env:
