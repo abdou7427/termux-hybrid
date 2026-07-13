@@ -69,12 +69,11 @@ public class WebViewBridge {
         });
     }
 
-    /**
+        /**
      * Returns the current shell PID to the web layer.
      */
     @JavascriptInterface
     public int getShellPid() {
-        TerminalSession session = getActiveSession();
-        return (session != null) ? session.getShellPid() : -1;
+        return -1;
     }
-}
+
