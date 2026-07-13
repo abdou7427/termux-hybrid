@@ -20,12 +20,10 @@ public class WebViewBridge {
     private TerminalSession getActiveSession() {
         if (mActivity == null) return null;
         
-        // 1. Try to get it via TerminalView if available
         if (mActivity.getTerminalView() != null) {
             return mActivity.getTerminalView().getCurrentSession();
         }
         
-        // 2. Fallback to direct field/method if accessible (Custom forks setup)
         try {
             java.lang.reflect.Method method = mActivity.getClass().getMethod("getCurrentSession");
             return (TerminalSession) method.invoke(mActivity);
@@ -44,7 +42,6 @@ public class WebViewBridge {
         mActivity.runOnUiThread(() -> {
             TerminalSession session = getActiveSession();
             if (session != null) {
-                // Append newline so the shell executes immediately
                 String payload = command + "\n";
                 byte[] bytes = payload.getBytes(Charset.defaultCharset());
                 session.write(bytes, bytes.length);
@@ -54,7 +51,6 @@ public class WebViewBridge {
 
     /**
      * Called from JavaScript: window.TermuxBridge.type("pkg install ");
-     * (sends text without pressing Enter)
      */
     @JavascriptInterface
     public void type(String text) {
@@ -69,11 +65,11 @@ public class WebViewBridge {
         });
     }
 
-        /**
-     * Returns the current shell PID to the web layer.
+    /**
+     * Returns the current shell PID to the web layer (Static fallback to avoid missing method crashes).
      */
     @JavascriptInterface
     public int getShellPid() {
         return -1;
     }
-
+}
