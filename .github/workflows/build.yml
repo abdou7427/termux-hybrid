@@ -48,7 +48,7 @@ jobs:
 
       # 6. Build Debug APK
       - name: Build Debug APK
-        run: chmod +x gradlew && ./gradlew assembleDebug --no-daemon --stacktrace
+        run: chmod +x gradlew && ./gradlew assembleDebug --no-daemon --stacktrace -Xlint:none -Dorg.gradle.warning.mode=none
 
       # 7. Upload APK artifact
       - name: Upload APK Artifact
