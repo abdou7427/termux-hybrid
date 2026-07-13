@@ -24,7 +24,6 @@ public class WebViewBridge {
 
         TerminalSession session = mActivity.getCurrentSession();
         if (session != null) {
-            // TerminalOutput.write(String) is the correct API
             session.write(command + "\n");
         }
     }
@@ -41,14 +40,5 @@ public class WebViewBridge {
         if (session != null) {
             session.write(text);
         }
-    }
-
-    /**
-     * Returns the current shell PID to the web layer.
-     */
-    @JavascriptInterface
-    public int getShellPid() {
-        TerminalSession session = mActivity.getCurrentSession();
-        return (session != null) ? session.getShellPid() : -1;
     }
 }
