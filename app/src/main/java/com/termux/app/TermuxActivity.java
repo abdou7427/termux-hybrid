@@ -69,8 +69,17 @@ import java.util.Arrays;
 
 import android.view.View;
 import android.webkit.WebChromeClient;
+import android.webkit.WebSettings;
 import android.webkit.WebView;
-import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import android.widget.LinearLayout;
+import androidx.appcompat.widget.Toolbar;
+import androidx.core.view.GravityCompat;
+import androidx.drawerlayout.widget.DrawerLayout;
+import com.google.android.material.button.MaterialButton;
+import android.content.Intent;
+import android.provider.Settings;
+import androidx.appcompat.app.AlertDialog;
+
 
 /**
  * A terminal emulator activity.
@@ -219,48 +228,62 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         super.onCreate(savedInstanceState);
 
         setContentView(R.layout.activity_termux);
+        
+
         // ============================================================
-        // HYBRID WEBVIEW INTEGRATION — INSERT THIS BLOCK INTO onCreate
+        // HYBRID SYSTEM - ADD THIS BLOCK
         // ============================================================
 
-        WebView webView = findViewById(R.id.hybrid_webview);
-        FloatingActionButton toggleBtn = findViewById(R.id.btn_toggle_view);
+        // Initialize WebViews
+        WebView aiWebView = findViewById(R.id.hybrid_webview);
+        WebView controlWebView = findViewById(R.id.kimi_control_webview);
+        WebView customWebView = findViewById(R.id.custom_lab_webview);
+        WebView browserWebView = findViewById(R.id.browser_webview);
+        LinearLayout browserContainer = findViewById(R.id.browser_popup_container);
+        Toolbar browserToolbar = findViewById(R.id.browser_toolbar);
 
-        // WebView settings
-        webView.getSettings().setJavaScriptEnabled(true);
-        webView.getSettings().setDomStorageEnabled(true);
-        webView.getSettings().setAllowFileAccess(true);
-        webView.setWebChromeClient(new WebChromeClient());
+        // Configure all WebViews
+        WebView[] allWebViews = {aiWebView, controlWebView, customWebView, browserWebView};
+        for (WebView wv : allWebViews) {
+            WebSettings ws = wv.getSettings();
+            ws.setJavaScriptEnabled(true);
+            ws.setDomStorageEnabled(true);
+            ws.setAllowFileAccess(true);
+            ws.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+            wv.setWebChromeClient(new WebChromeClient());
+            wv.addJavascriptInterface(new WebViewBridge(this), "TermuxBridge");
+        }
 
-        // Attach the bridge so JS can call window.TermuxBridge.exec("...")
-        webView.addJavascriptInterface(new WebViewBridge(this), "TermuxBridge");
+        // Load local server URLs
+        aiWebView.loadUrl("http://127.0.0.1:8089/ai_agent.html");
+        controlWebView.loadUrl("http://127.0.0.1:8089/control.html");
+        customWebView.loadUrl("http://127.0.0.1:8089/custom.html");
 
-        // Load your interactive web UI (local asset or remote URL)
-        // Option A: Load from app/src/main/assets/webui/index.html
-        webView.loadUrl("file:///android_asset/webui/index.html");
-
-        // Option B: Load a remote dashboard
-        // webView.loadUrl("https://your-dashboard.example.com");
-
-        // Toggle logic: WebView <-> Terminal
-        toggleBtn.setOnClickListener(v -> {
-            if (webView.getVisibility() == View.VISIBLE) {
-                webView.setVisibility(View.GONE);
-                findViewById(R.id.terminal_view).setVisibility(View.VISIBLE);
-                toggleBtn.setImageResource(android.R.drawable.ic_menu_view);
-                // Auto-focus terminal for keyboard input
-                mTerminalView.requestFocus();
-            } else {
-                findViewById(R.id.terminal_view).setVisibility(View.GONE);
-                webView.setVisibility(View.VISIBLE);
-                toggleBtn.setImageResource(android.R.drawable.ic_menu_close_clear_cancel);
-            }
+        // Browser popup close
+        browserToolbar.setNavigationOnClickListener(v -> {
+            browserContainer.setVisibility(View.GONE);
+            browserWebView.loadUrl("about:blank");
         });
 
-        // ============================================================
-        // END HYBRID WEBVIEW INTEGRATION
-        // ============================================================
+        // Drawer buttons
+        findViewById(R.id.btn_switch_to_webview).setOnClickListener(v -> switchToView(aiWebView));
+        findViewById(R.id.btn_switch_to_control).setOnClickListener(v -> switchToView(controlWebView));
+        findViewById(R.id.btn_switch_to_custom_lab).setOnClickListener(v -> switchToView(customWebView));
+        findViewById(R.id.btn_switch_to_terminal).setOnClickListener(v -> switchToView(null));
 
+        // Settings button
+        findViewById(R.id.settings_button).setOnClickListener(v -> showSettingsPopup());
+
+        // Fix: terminal_sessions_list instead of left_drawer
+        // Find the line that references sessions list and ensure it uses:
+        // ListView mListView = findViewById(R.id.terminal_sessions_list);
+
+        // ============================================================
+        // END HYBRID SYSTEM
+        // ============================================================
+        
+
+        
         // Load termux shared preferences
         // This will also fail if TermuxConstants.TERMUX_PACKAGE_NAME does not equal applicationId
         mPreferences = TermuxAppSharedPreferences.build(this, true);
@@ -322,7 +345,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
         // Send the {@link TermuxConstants#BROADCAST_TERMUX_OPENED} broadcast to notify apps that Termux
         // app has been opened.
-        TermuxUtils.sendTermuxOpenedBroadcast(this);
+        TermuxUtils.sendTermuxOpenedBroadcast(this);     
     }
 
     @Override
@@ -1056,4 +1079,68 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         return intent;
     }
 
+    /**
+    * Switch between environments
+    */
+    private void switchToView(WebView targetWebView) {
+        DrawerLayout drawer = findViewById(R.id.drawer_layout);
+        WebView aiWebView = findViewById(R.id.hybrid_webview);
+        WebView controlWebView = findViewById(R.id.kimi_control_webview);
+        WebView customWebView = findViewById(R.id.custom_lab_webview);
+        LinearLayout browserContainer = findViewById(R.id.browser_popup_container);
+        View terminalView = findViewById(R.id.terminal_view);
+
+        // Hide all
+        aiWebView.setVisibility(View.GONE);
+        controlWebView.setVisibility(View.GONE);
+        customWebView.setVisibility(View.GONE);
+        browserContainer.setVisibility(View.GONE);
+
+        if (targetWebView == null) {
+            // Terminal mode
+            terminalView.setVisibility(View.VISIBLE);
+            mTerminalView.requestFocus();
+        } else {
+            // Web mode
+            terminalView.setVisibility(View.GONE);
+            targetWebView.setVisibility(View.VISIBLE);
+            targetWebView.requestFocus();
+        }
+
+        drawer.closeDrawer(GravityCompat.START);
+    }
+
+    /**
+     * Show settings popup
+     */
+    private void showSettingsPopup() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        WebView settingsWebView = new WebView(this);
+        WebSettings ws = settingsWebView.getSettings();
+        ws.setJavaScriptEnabled(true);
+        settingsWebView.addJavascriptInterface(new WebViewBridge(this), "TermuxBridge");
+        settingsWebView.loadUrl("http://127.0.0.1:8089/settings.html");
+
+        builder.setTitle("⚙️ Settings")
+               .setView(settingsWebView)
+               .setPositiveButton("System Settings", (d, w) -> {
+                   startActivity(new Intent(Settings.ACTION_SETTINGS));
+               })
+               .setNegativeButton("Close", null)
+               .show();
+    }
+
+    /**
+     * Open browser popup
+     */
+    public void openBrowserPopup(String url) {
+        runOnUiThread(() -> {
+            WebView browserWebView = findViewById(R.id.browser_webview);
+            LinearLayout browserContainer = findViewById(R.id.browser_popup_container);
+            browserContainer.setVisibility(View.VISIBLE);
+            browserWebView.bringToFront();
+            browserWebView.loadUrl(url);
+        });
+    }
+ 
 }
