@@ -80,7 +80,7 @@ import androidx.drawerlayout.widget.DrawerLayout;
 import com.google.android.material.button.MaterialButton;
 import android.content.Intent;
 import android.provider.Settings;
-
+import android.os.Build;
 
 
 /**
@@ -198,7 +198,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     private WebView mCustomWebView;
     private WebView mBrowserWebView;
     private LinearLayout mBrowserContainer;
-    
+    private View mTerminalToolbarViewPager;  // ← شريط Extra Keys (ESC / CTRL / ALT)
 
 
     private static final int CONTEXT_MENU_SELECT_URL_ID = 0;
@@ -250,6 +250,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         mBrowserWebView = findViewById(R.id.browser_webview);
         mBrowserContainer = findViewById(R.id.browser_popup_container);
         Toolbar browserToolbar = findViewById(R.id.browser_toolbar);
+        mTerminalToolbarViewPager = findViewById(R.id.terminal_toolbar_view_pager);
 
         WebView[] allWebViews = {mAiWebView, mControlWebView, mCustomWebView, mBrowserWebView};
         for (WebView wv : allWebViews) {
@@ -257,12 +258,15 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             ws.setJavaScriptEnabled(true);
             ws.setDomStorageEnabled(true);
             ws.setAllowFileAccess(true);
-            ws.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+            ws.setAllowContentAccess(true);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                ws.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+            }
             wv.setWebChromeClient(new WebChromeClient());
             wv.addJavascriptInterface(new WebViewBridge(this), "TermuxBridge");
         }
 
-        if (HYBRID_MODE.equals("server")) {
+        if ("server".equals(HYBRID_MODE)) {
             mAiWebView.loadUrl("http://127.0.0.1:8089/ai_agent.html");
             mControlWebView.loadUrl("http://127.0.0.1:8089/control.html");
             mCustomWebView.loadUrl("http://127.0.0.1:8089/custom.html");
@@ -275,6 +279,10 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         browserToolbar.setNavigationOnClickListener(v -> {
             mBrowserContainer.setVisibility(View.GONE);
             mBrowserWebView.loadUrl("about:blank");
+            // إعادة إظهار الشريط السفلي إذا كان الطرفية ظاهر
+            if (mTerminalView.getVisibility() == View.VISIBLE) {
+                showTermuxToolbar(true);
+            }
         });
 
         findViewById(R.id.btn_switch_to_webview).setOnClickListener(v -> switchToView(mAiWebView));
@@ -1084,7 +1092,14 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         return intent;
     }
 
-    
+    /**
+     * إظهار أو إخفاء شريط Extra Keys السفلي (ESC / CTRL / ALT / الأسهم)
+     */
+    private void showTermuxToolbar(boolean visible) {
+        if (mTerminalToolbarViewPager != null) {
+            mTerminalToolbarViewPager.setVisibility(visible ? View.VISIBLE : View.GONE);
+        }
+    }
      /**
      * Switch between environments
      */
@@ -1101,11 +1116,13 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             // Terminal mode
             mTerminalView.setVisibility(View.VISIBLE);
             mTerminalView.requestFocus();
+            showTermuxToolbar(true);   // ← إظهار ESC / CTRL / ALT
         } else {
             // Web mode
             mTerminalView.setVisibility(View.GONE);
             targetWebView.setVisibility(View.VISIBLE);
             targetWebView.requestFocus();
+            showTermuxToolbar(false);  // ← إخفاء ESC / CTRL / ALT
         }
 
         drawer.closeDrawer(GravityCompat.START);
@@ -1119,9 +1136,15 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         WebView settingsWebView = new WebView(this);
         WebSettings ws = settingsWebView.getSettings();
         ws.setJavaScriptEnabled(true);
+        ws.setDomStorageEnabled(true);
+        ws.setAllowFileAccess(true);
+        ws.setAllowContentAccess(true);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            ws.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+        }
         settingsWebView.addJavascriptInterface(new WebViewBridge(this), "TermuxBridge");
-        
-        if (HYBRID_MODE.equals("server")) {
+
+        if ("server".equals(HYBRID_MODE)) {
             settingsWebView.loadUrl("http://127.0.0.1:8089/settings.html");
         } else {
             settingsWebView.loadUrl("file:///android_asset/webui/settings.html");
@@ -1141,6 +1164,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
      */
     public void openBrowserPopup(String url) {
         runOnUiThread(() -> {
+            showTermuxToolbar(false);  // ← إخفاء ESC / CTRL / ALT
             mBrowserContainer.setVisibility(View.VISIBLE);
             mBrowserWebView.bringToFront();
             mBrowserWebView.loadUrl(url);
