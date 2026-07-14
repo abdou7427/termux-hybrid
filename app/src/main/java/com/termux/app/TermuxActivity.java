@@ -78,10 +78,13 @@ import androidx.appcompat.widget.Toolbar;
 import androidx.core.view.GravityCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import com.google.android.material.button.MaterialButton;
-import android.content.Intent;
 import android.provider.Settings;
 import android.os.Build;
-
+import android.content.SharedPreferences;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 
 /**
  * A terminal emulator activity.
@@ -192,7 +195,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     private float mTerminalToolbarDefaultHeight;
 
         // HYBRID MODE - "server" for development, "assets" for production
-    private static final String HYBRID_MODE = "server";
+    private static final String PREFS_NAME = "hybrid_prefs";
+    private static final String KEY_FIRST_RUN = "first_run";
     private WebView mAiWebView;
     private WebView mControlWebView;
     private WebView mCustomWebView;
@@ -200,6 +204,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     private LinearLayout mBrowserContainer;
     private View mTerminalToolbarViewPager;  // ← شريط Extra Keys (ESC / CTRL / ALT)
 
+    private static final String WEBUI_DIR = "/data/data/com.termux/files/home/webui";
 
     private static final int CONTEXT_MENU_SELECT_URL_ID = 0;
     private static final int CONTEXT_MENU_SHARE_TRANSCRIPT_ID = 1;
@@ -252,6 +257,13 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         Toolbar browserToolbar = findViewById(R.id.browser_toolbar);
         mTerminalToolbarViewPager = findViewById(R.id.terminal_toolbar_view_pager);
 
+        // نسخ assets → Termux في أول تشغيل فقط
+        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        if (prefs.getBoolean(KEY_FIRST_RUN, true)) {
+            copyAssetsToTermux();
+            prefs.edit().putBoolean(KEY_FIRST_RUN, false).apply();
+        }
+
         WebView[] allWebViews = {mAiWebView, mControlWebView, mCustomWebView, mBrowserWebView};
         for (WebView wv : allWebViews) {
             WebSettings ws = wv.getSettings();
@@ -266,20 +278,12 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             wv.addJavascriptInterface(new WebViewBridge(this), "TermuxBridge");
         }
 
-        if ("server".equals(HYBRID_MODE)) {
-            mAiWebView.loadUrl("http://127.0.0.1:8089/ai_agent.html");
-            mControlWebView.loadUrl("http://127.0.0.1:8089/control.html");
-            mCustomWebView.loadUrl("http://127.0.0.1:8089/custom.html");
-        } else {
-            mAiWebView.loadUrl("file:///android_asset/webui/ai_agent.html");
-            mControlWebView.loadUrl("file:///android_asset/webui/control.html");
-            mCustomWebView.loadUrl("file:///android_asset/webui/custom.html");
-        }
+        // تحميل من Termux مباشرة (بدون HTTP وبدون سيرفر)
+        loadAllWebViews();
 
         browserToolbar.setNavigationOnClickListener(v -> {
             mBrowserContainer.setVisibility(View.GONE);
             mBrowserWebView.loadUrl("about:blank");
-            // إعادة إظهار الشريط السفلي إذا كان الطرفية ظاهر
             if (mTerminalView.getVisibility() == View.VISIBLE) {
                 showTermuxToolbar(true);
             }
@@ -1093,13 +1097,54 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     }
 
     /**
-     * إظهار أو إخفاء شريط Extra Keys السفلي (ESC / CTRL / ALT / الأسهم)
+     * نسخ ملفات assets/webui/ → ~/webui في Termux
+     */
+    private void copyAssetsToTermux() {
+        File destDir = new File(WEBUI_DIR);
+        if (!destDir.exists()) destDir.mkdirs();
+
+        String[] files = {"ai_agent.html", "control.html", "custom.html", "settings.html"};
+        for (String file : files) {
+            try {
+                InputStream in = getAssets().open("webui/" + file);
+                File outFile = new File(destDir, file);
+                FileOutputStream out = new FileOutputStream(outFile);
+
+                byte[] buffer = new byte[1024];
+                int read;
+                while ((read = in.read(buffer)) != -1) {
+                    out.write(buffer, 0, read);
+                }
+                in.close();
+                out.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        Toast.makeText(this, "WebUI copied to ~/webui", Toast.LENGTH_SHORT).show();
+    }
+
+    /**
+     * تحميل جميع WebViews من ~/webui
+     */
+    private void loadAllWebViews() {
+        String base = "file://" + WEBUI_DIR + "/";
+        mAiWebView.loadUrl(base + "ai_agent.html");
+        mControlWebView.loadUrl(base + "control.html");
+        mCustomWebView.loadUrl(base + "custom.html");
+    }
+
+    /**
+     * إظهار/إخفاء شريط Extra Keys
      */
     private void showTermuxToolbar(boolean visible) {
         if (mTerminalToolbarViewPager != null) {
             mTerminalToolbarViewPager.setVisibility(visible ? View.VISIBLE : View.GONE);
         }
     }
+    
+    
+    
      /**
      * Switch between environments
      */
@@ -1132,7 +1177,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
      * Show settings popup
      */
     private void showSettingsPopup() {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
         WebView settingsWebView = new WebView(this);
         WebSettings ws = settingsWebView.getSettings();
         ws.setJavaScriptEnabled(true);
@@ -1143,17 +1188,12 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             ws.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
         }
         settingsWebView.addJavascriptInterface(new WebViewBridge(this), "TermuxBridge");
-
-        if ("server".equals(HYBRID_MODE)) {
-            settingsWebView.loadUrl("http://127.0.0.1:8089/settings.html");
-        } else {
-            settingsWebView.loadUrl("file:///android_asset/webui/settings.html");
-        }
+        settingsWebView.loadUrl("file://" + WEBUI_DIR + "/settings.html");
 
         builder.setTitle("⚙️ Settings")
                .setView(settingsWebView)
                .setPositiveButton("System Settings", (d, w) -> {
-                   startActivity(new Intent(Settings.ACTION_SETTINGS));
+                   startActivity(new Intent(android.provider.Settings.ACTION_SETTINGS));
                })
                .setNegativeButton("Close", null)
                .show();
