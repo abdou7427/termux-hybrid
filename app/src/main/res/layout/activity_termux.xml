@@ -2,14 +2,14 @@
 <com.termux.app.terminal.TermuxActivityRootView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
-    android:id="@+id/termux_activity_root_view"
+    android:id="@+id/activity_termux_root_view"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:fitsSystemWindows="true">
 
     <RelativeLayout
-        android:id="@+id/termux_activity_root_relative_layout"
+        android:id="@+id/activity_termux_root_relative_layout"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
@@ -229,4 +229,11 @@
             android:background="@color/black"
             android:layout_alignParentBottom="true" />
     </RelativeLayout>
+
+    <!-- Bottom space view expected by TermuxActivity.java -->
+    <View
+        android:id="@+id/activity_termux_bottom_space_view"
+        android:layout_width="match_parent"
+        android:layout_height="0dp" />
+
 </com.termux.app.terminal.TermuxActivityRootView>
