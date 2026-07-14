@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<com.termux.app.terminal.TermuxActivityRootView xmlns:android="http://android.com"
-    xmlns:app="http://android.com"
-    xmlns:tools="http://android.com"
+<com.termux.app.terminal.TermuxActivityRootView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/termux_activity_root_view"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -15,14 +15,14 @@
         android:layout_weight="1"
         android:orientation="vertical">
 
-        <androidx.drawerlayout.widget.DrawerLayout 
+        <androidx.drawerlayout.widget.DrawerLayout
             android:id="@+id/drawer_layout"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:layout_alignParentTop="true"
             android:layout_above="@+id/terminal_toolbar_view_pager">
 
-            <!-- المحتوى الرئيسي للبيئات المختلفة والمتصفح المنبثق -->
+            <!-- المحتوى الرئيسي للبيئات المتعددة والمتصفح المنبثق -->
             <FrameLayout
                 android:layout_width="match_parent"
                 android:layout_height="match_parent">
@@ -85,7 +85,7 @@
 
             </FrameLayout>
 
-            <!-- القائمة الجانبية بتصميمك العمودي الأنيق والجديد كاملاً ومغلق الأقواس -->
+            <!-- القائمة الجانبية بتصميمك العمودي الأنيق والجديد كاملاً -->
             <LinearLayout
                 android:id="@+id/left_drawer"
                 android:layout_width="280dp"
@@ -207,6 +207,7 @@
                         android:text="KEYBOARD"
                         android:textColor="#FFFFFF"
                         android:textSize="11sp" />
+
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/new_session_button"
                         style="@style/Widget.MaterialComponents.Button.TextButton"
@@ -216,7 +217,10 @@
                         android:text="NEW SESSION"
                         android:textColor="#FFFFFF"
                         android:textSize="11sp" />
+                </LinearLayout>
+            </LinearLayout>
         </androidx.drawerlayout.widget.DrawerLayout>
+
         <androidx.viewpager.widget.ViewPager
             android:id="@+id/terminal_toolbar_view_pager"
             android:visibility="gone"
@@ -224,4 +228,5 @@
             android:layout_height="37.5dp"
             android:background="@color/black"
             android:layout_alignParentBottom="true" />
+    </RelativeLayout>
 </com.termux.app.terminal.TermuxActivityRootView>
