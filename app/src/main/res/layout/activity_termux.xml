@@ -1,203 +1,227 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.drawerlayout.widget.DrawerLayout 
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<com.termux.app.terminal.TermuxActivityRootView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:id="@+id/drawer_layout"
+    xmlns:tools="http://android.com"
+    android:id="@+id/termux_activity_root_view"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:fitsSystemWindows="true">
 
-    <!-- المحتوى الرئيسي -->
-    <FrameLayout
+    <RelativeLayout
+        android:id="@+id/termux_activity_root_relative_layout"
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="vertical">
 
-        <!-- الطرفية -->
-        <com.termux.view.TerminalView
-            android:id="@+id/terminal_view"
+        <androidx.drawerlayout.widget.DrawerLayout 
+            android:id="@+id/drawer_layout"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:visibility="gone" />
+            android:layout_alignParentTop="true"
+            android:layout_above="@+id/terminal_toolbar_view_pager">
 
-        <!-- AI Agent -->
-        <WebView
-            android:id="@+id/hybrid_webview"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:visibility="visible" />
-
-        <!-- Control Panel -->
-        <WebView
-            android:id="@+id/kimi_control_webview"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:visibility="gone" />
-
-        <!-- Custom Lab -->
-        <WebView
-            android:id="@+id/custom_lab_webview"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:visibility="gone" />
-
-        <!-- المتصفح المنبثق -->
-        <LinearLayout
-            android:id="@+id/browser_popup_container"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:orientation="vertical"
-            android:background="?android:attr/windowBackground"
-            android:visibility="gone">
-
-            <androidx.appcompat.widget.Toolbar
-                android:id="@+id/browser_toolbar"
+            <!-- المحتوى الرئيسي للبيئات المتعددة والمتصفح المنبثق -->
+            <FrameLayout
                 android:layout_width="match_parent"
-                android:layout_height="?attr/actionBarSize"
-                android:background="?attr/colorPrimary"
-                app:title="AI Web Browser"
-                app:navigationIcon="@android:drawable/ic_menu_close_clear_cancel" />
+                android:layout_height="match_parent">
 
-            <WebView
-                android:id="@+id/browser_webview"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent" />
-        </LinearLayout>
+                <!-- الطرفية السوداء الأصلية -->
+                <com.termux.view.TerminalView
+                    android:id="@+id/terminal_view"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:defaultFocusHighlightEnabled="false"
+                    android:focusableInTouchMode="true"
+                    android:scrollbarThumbVertical="@drawable/terminal_scroll_shape"
+                    android:scrollbars="vertical"
+                    android:visibility="gone"
+                    tools:ignore="UnusedAttribute" />
 
-    </FrameLayout>
+                <!-- AI Agent واجهة الشات المتطورة -->
+                <WebView
+                    android:id="@+id/hybrid_webview"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:visibility="visible" />
 
-    <!-- القائمة الجانبية -->
-    <LinearLayout
-        android:id="@+id/left_drawer"
-        android:layout_width="280dp"
-        android:layout_height="match_parent"
-        android:layout_gravity="start"
-        android:orientation="vertical"
-        android:background="#121212">
+                <!-- Control Panel لوحة التحكم السريعة لـ Kimi -->
+                <WebView
+                    android:id="@+id/kimi_control_webview"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:visibility="gone" />
 
-        <!-- ⚙️ Settings -->
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/settings_button"
-            style="@style/Widget.MaterialComponents.Button.TextButton"
+                <!-- Custom Lab الواجهة الاحتياطية للمسودات -->
+                <WebView
+                    android:id="@+id/custom_lab_webview"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:visibility="gone" />
+
+                <!-- المتصفح المنبثق الخارجي للأتمتة والتصفح البرمجي -->
+                <LinearLayout
+                    android:id="@+id/browser_popup_container"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:orientation="vertical"
+                    android:background="?android:attr/windowBackground"
+                    android:visibility="gone">
+
+                    <androidx.appcompat.widget.Toolbar
+                        android:id="@+id/browser_toolbar"
+                        android:layout_width="match_parent"
+                        android:layout_height="?attr/actionBarSize"
+                        android:background="?attr/colorPrimary"
+                        app:title="AI Web Browser"
+                        app:navigationIcon="@android:drawable/ic_menu_close_clear_cancel" />
+
+                    <WebView
+                        android:id="@+id/browser_webview"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent" />
+                </LinearLayout>
+
+            </FrameLayout>
+
+            <!-- القائمة الجانبية بتصميمك العمودي الأنيق والجديد كاملاً -->
+            <LinearLayout
+                android:id="@+id/left_drawer"
+                android:layout_width="280dp"
+                android:layout_height="match_parent"
+                android:layout_gravity="start"
+                android:orientation="vertical"
+                android:background="#121212">
+
+                <!-- ⚙️ Settings زر الإعدادات المطور -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/settings_button"
+                    style="@style/Widget.MaterialComponents.Button.TextButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginHorizontal="8dp"
+                    android:layout_marginTop="12dp"
+                    android:text="⚙️ Settings  الإعدادات"
+                    android:textColor="#FFFFFF"
+                    android:textAlignment="viewStart"
+                    android:textSize="14sp"
+                    app:icon="@android:drawable/ic_menu_manage"
+                    app:iconTint="#FFFFFF" />
+
+                <!-- عنوان ENVIRONMENT البيئات الجانبي -->
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:paddingHorizontal="16dp"
+                    android:paddingVertical="8dp"
+                    android:text="ENVIRONMENT  البيئات"
+                    android:textColor="#888888"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+
+                <!-- 🤖 AI Agent زر بيئة الشات -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_switch_to_webview"
+                    style="@style/Widget.MaterialComponents.Button.TextButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginHorizontal="4dp"
+                    android:text="🤖 AI Agent"
+                    android:textColor="#FFFFFF"
+                    android:textAlignment="viewStart"
+                    app:icon="@android:drawable/ic_menu_search"
+                    app:iconTint="#FFFFFF" />
+
+                <!-- 🎛️ Control Panel زر اللوحة السريعة -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_switch_to_control"
+                    style="@style/Widget.MaterialComponents.Button.TextButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginHorizontal="4dp"
+                    android:text="🎛️ Control Panel"
+                    android:textColor="#FFFFFF"
+                    android:textAlignment="viewStart"
+                    app:icon="@android:drawable/ic_menu_preferences"
+                    app:iconTint="#FFFFFF" />
+
+                <!-- 🧪 Custom Lab زر المختبر والمسودة -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_switch_to_custom_lab"
+                    style="@style/Widget.MaterialComponents.Button.TextButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginHorizontal="4dp"
+                    android:text="🧪 Custom Lab"
+                    android:textColor="#FFFFFF"
+                    android:textAlignment="viewStart"
+                    app:icon="@android:drawable/ic_menu_edit"
+                    app:iconTint="#FFFFFF" />
+
+                <!-- 🖥️ Native Terminal زر العودة للشاشة السوداء -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_switch_to_terminal"
+                    style="@style/Widget.MaterialComponents.Button.TextButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginHorizontal="4dp"
+                    android:text="🖥️ Native Terminal"
+                    android:textColor="#FFFFFF"
+                    android:textAlignment="viewStart"
+                    app:icon="@android:drawable/ic_menu_compass"
+                    app:iconTint="#FFFFFF" />
+
+                <!-- خط فاصل رمزي -->
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginVertical="8dp"
+                    android:layout_marginHorizontal="16dp"
+                    android:background="#333333" />
+
+                <!-- قائمة جلسات سطر أوامر Termux الأصلية -->
+                <ListView
+                    android:id="@+id/terminal_sessions_list"
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_weight="1"
+                    android:choiceMode="singleChoice"
+                    android:divider="@android:color/transparent"
+                    android:dividerHeight="0dp" />
+
+                <!-- أزرار الكيبورد والجلسات الافتراضية للتطبيق -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:padding="8dp"
+                    android:background="#1A1A1A">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/toggle_keyboard_button"
+                        style="@style/Widget.MaterialComponents.Button.TextButton"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="KEYBOARD"
+                        android:textColor="#FFFFFF"
+                        android:textSize="11sp" />
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/new_session_button"
+                        style="@style/Widget.MaterialComponents.Button.TextButton"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="NEW SESSION"
+                        android:textColor="#FFFFFF"
+                        android:textSize="11sp" />
+        </androidx.drawerlayout.widget.DrawerLayout>
+        <androidx.viewpager.widget.ViewPager
+            android:id="@+id/terminal_toolbar_view_pager"
+            android:visibility="gone"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginHorizontal="8dp"
-            android:layout_marginTop="12dp"
-            android:text="⚙️ Settings  الإعدادات"
-            android:textColor="#FFFFFF"
-            android:textAlignment="viewStart"
-            android:textSize="14sp"
-            app:icon="@android:drawable/ic_menu_manage"
-            app:iconTint="#FFFFFF" />
-
-        <!-- عنوان ENVIRONMENT -->
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:paddingHorizontal="16dp"
-            android:paddingVertical="8dp"
-            android:text="ENVIRONMENT  البيئات"
-            android:textColor="#888888"
-            android:textSize="11sp"
-            android:textStyle="bold" />
-
-        <!-- 🤖 AI Agent -->
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btn_switch_to_webview"
-            style="@style/Widget.MaterialComponents.Button.TextButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginHorizontal="4dp"
-            android:text="🤖 AI Agent"
-            android:textColor="#FFFFFF"
-            android:textAlignment="viewStart"
-            app:icon="@android:drawable/ic_menu_search"
-            app:iconTint="#FFFFFF" />
-
-        <!-- 🎛️ Control Panel -->
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btn_switch_to_control"
-            style="@style/Widget.MaterialComponents.Button.TextButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginHorizontal="4dp"
-            android:text="🎛️ Control Panel"
-            android:textColor="#FFFFFF"
-            android:textAlignment="viewStart"
-            app:icon="@android:drawable/ic_menu_preferences"
-            app:iconTint="#FFFFFF" />
-
-        <!-- 🧪 Custom Lab -->
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btn_switch_to_custom_lab"
-            style="@style/Widget.MaterialComponents.Button.TextButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginHorizontal="4dp"
-            android:text="🧪 Custom Lab"
-            android:textColor="#FFFFFF"
-            android:textAlignment="viewStart"
-            app:icon="@android:drawable/ic_menu_edit"
-            app:iconTint="#FFFFFF" />
-
-        <!-- 🖥️ Native Terminal -->
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btn_switch_to_terminal"
-            style="@style/Widget.MaterialComponents.Button.TextButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginHorizontal="4dp"
-            android:text="🖥️ Native Terminal"
-            android:textColor="#FFFFFF"
-            android:textAlignment="viewStart"
-            app:icon="@android:drawable/ic_menu_compass"
-            app:iconTint="#FFFFFF" />
-
-        <!-- خط فاصل -->
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:layout_marginVertical="8dp"
-            android:layout_marginHorizontal="16dp"
-            android:background="#333333" />
-
-        <!-- جلسات Termux -->
-        <ListView
-            android:id="@+id/terminal_sessions_list"
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1"
-            android:choiceMode="singleChoice"
-            android:divider="@android:color/transparent"
-            android:dividerHeight="0dp" />
-
-        <!-- KEYBOARD | NEW SESSION -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:padding="8dp"
-            android:background="#1A1A1A">
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/toggle_keyboard_button"
-                style="@style/Widget.MaterialComponents.Button.TextButton"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="KEYBOARD"
-                android:textColor="#FFFFFF"
-                android:textSize="11sp" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/new_session_button"
-                style="@style/Widget.MaterialComponents.Button.TextButton"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="NEW SESSION"
-                android:textColor="#FFFFFF"
-                android:textSize="11sp" />
-        </LinearLayout>
-
-    </LinearLayout>
-
-</androidx.drawerlayout.widget.DrawerLayout>
+            android:layout_height="37.5dp"
+            android:background="@color/black"
+            android:layout_alignParentBottom="true" />
+</com.termux.app.terminal.TermuxActivityRootView>
