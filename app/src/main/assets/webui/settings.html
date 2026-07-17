@@ -1,37 +1,217 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Settings</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>⚙️ Settings</title>
   <style>
-    body {
-      background: #0d1117;
-      color: #c9d1d9;
-      font-family: sans-serif;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-      text-align: center;
-      margin: 0;
+    :root {
+      --bg-color: #0d1117; --card-bg: #161b22; --text-primary: #e6edf3;
+      --text-secondary: #8b949e; --accent: #58a6ff; --border: #30363d;
+      --success: #238636; --danger: #da3633; --warning: #d29922;
     }
-    h1 { color: #f0883e; }
-    p { color: #8b949e; }
-    code {
-      background: #21262d;
-      padding: 4px 8px;
-      border-radius: 4px;
-      color: #aff5b4;
-    }
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', system-ui, sans-serif; }
+    body { background-color: var(--bg-color); color: var(--text-primary); padding: 15px; overflow-y: auto; }
+    
+    .section-title { color: var(--text-secondary); font-size: 12px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; margin: 20px 0 10px 5px; }
+    
+    .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-bottom: 15px; }
+    .card-item { padding: 12px 15px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); }
+    .card-item:last-child { border-bottom: none; }
+    
+    .item-info { display: flex; align-items: center; gap: 12px; flex: 1; }
+    .item-icon { font-size: 20px; width: 30px; text-align: center; }
+    .item-text h3 { font-size: 14px; color: var(--text-primary); margin-bottom: 2px; }
+    .item-text p { font-size: 11px; color: var(--text-secondary); }
+    
+    .item-action { flex-shrink: 0; }
+    
+    /* Buttons */
+    .action-btn { background: var(--success); color: white; border: none; padding: 6px 14px; border-radius: 6px; font-size: 12px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+    .action-btn:hover { opacity: 0.9; }
+    .action-btn.secondary { background: #21262d; border: 1px solid var(--border); color: var(--text-primary); }
+    .action-btn.warning { background: var(--warning); color: black; }
+    
+    /* Select Dropdown */
+    select { background: #21262d; color: var(--text-primary); border: 1px solid var(--border); padding: 6px 10px; border-radius: 6px; font-size: 12px; outline: none; cursor: pointer; }
+
+    /* Summary Stats Grid */
+    .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 12px; }
+    .stat-box { background: #0d1117; border: 1px solid var(--border); border-radius: 8px; padding: 10px; text-align: center; }
+    .stat-box .stat-value { font-size: 16px; font-weight: bold; color: var(--accent); margin-bottom: 4px; }
+    .stat-box .stat-label { font-size: 10px; color: var(--text-secondary); text-transform: uppercase; }
+
+    /* Toast Notification */
+    .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--text-primary); color: var(--bg-color); padding: 10px 20px; border-radius: 20px; font-size: 13px; font-weight: bold; display: none; z-index: 100; box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
+    .toast.show { display: block; animation: fadeInOut 2s ease; }
+    @keyframes fadeInOut { 0% { opacity: 0; transform: translateX(-50%) translateY(10px); } 20% { opacity: 1; transform: translateX(-50%) translateY(0); } 80% { opacity: 1; } 100% { opacity: 0; } }
   </style>
 </head>
 <body>
-  <h1>⚙️ Settings</h1>
-  <p>Placeholder — copy from <code>~/hybrid-server/settings.html</code></p>
-  <p style="font-size: 12px; margin-top: 40px;">
-    Run in Termux:<br>
-    <code>cp ~/hybrid-server/settings.html /sdcard/Download/</code>
-  </p>
+
+  <!-- 📊 ملخص النظام -->
+  <div class="section-title">📊 System Summary</div>
+  <div class="card">
+    <div class="stats-grid">
+      <div class="stat-box"><div class="stat-value" id="stat-agent">🔴 OFF</div><div class="stat-label">Agent Status</div></div>
+      <div class="stat-box"><div class="stat-value" id="stat-storage">-- GB</div><div class="stat-label">Free Storage</div></div>
+      <div class="stat-box"><div class="stat-value" id="stat-mem">-- MB</div><div class="stat-label">Memory (RAM)</div></div>
+      <div class="stat-box"><div class="stat-value" id="stat-ip">--</div><div class="stat-label">Local IP</div></div>
+    </div>
+  </div>
+
+  <!-- 🤖 صلاحيات الأتمتة (الوكيل) -->
+  <div class="section-title">🤖 Automation Permissions</div>
+  <div class="card">
+    <div class="card-item">
+      <div class="item-info">
+        <div class="item-icon">♿</div>
+        <div class="item-text"><h3>Accessibility</h3><p>Required for UI automation & screen reading</p></div>
+      </div>
+      <div class="item-action"><button class="action-btn warning" onclick="openSettings('accessibility')">Open</button></div>
+    </div>
+    <div class="card-item">
+      <div class="item-info">
+        <div class="item-icon">🔔</div>
+        <div class="item-text"><h3>Notification Access</h3><p>Required to read and reply to notifications</p></div>
+      </div>
+      <div class="item-action"><button class="action-btn warning" onclick="openSettings('notifications_listener')">Open</button></div>
+    </div>
+    <div class="card-item">
+      <div class="item-info">
+        <div class="item-icon">🖼️</div>
+        <div class="item-text"><h3>Draw Over Apps</h3><p>Required to show floating agent controls</p></div>
+      </div>
+      <div class="item-action"><button class="action-btn warning" onclick="openSettings('overlay')">Open</button></div>
+    </div>
+    <div class="card-item">
+      <div class="item-info">
+        <div class="item-icon">🔋</div>
+        <div class="item-text"><h3>Battery Optimization</h3><p>Prevent Android from killing the agent</p></div>
+      </div>
+      <div class="item-action"><button class="action-btn secondary" onclick="openSettings('battery')">Ignore</button></div>
+    </div>
+  </div>
+
+  <!-- 🌐 اللغة والسلوك -->
+  <div class="section-title">🌐 Language & Behavior</div>
+  <div class="card">
+    <div class="card-item">
+      <div class="item-info">
+        <div class="item-icon">🏠</div>
+        <div class="item-text"><h3>Default View</h3><p>Choose which screen opens on app launch</p></div>
+      </div>
+      <div class="item-action">
+        <select id="defaultViewSelect" onchange="saveSetting('default_view', this.value)">
+          <option value="ai">🤖 AI Agent</option>
+          <option value="control">🎛️ Control</option>
+          <option value="terminal">🖥️ Terminal</option>
+        </select>
+      </div>
+    </div>
+    <div class="card-item">
+      <div class="item-info">
+        <div class="item-icon">🗣️</div>
+        <div class="item-text"><h3>Language</h3><p>Change app interface language (Coming soon)</p></div>
+      </div>
+      <div class="item-action">
+        <select id="langSelect" onchange="saveSetting('app_lang', this.value)" disabled>
+          <option value="en">English</option>
+          <option value="ar">العربية</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- 🔄 التحديثات -->
+  <div class="section-title">🔄 Updates</div>
+  <div class="card">
+    <div class="card-item">
+      <div class="item-info">
+        <div class="item-icon">📦</div>
+        <div class="item-text"><h3>Update Termux Packages</h3><p>pkg update && pkg upgrade -y</p></div>
+      </div>
+      <div class="item-action"><button class="action-btn secondary" onclick="exec('pkg update && pkg upgrade -y')">Update</button></div>
+    </div>
+    <div class="card-item">
+      <div class="item-info">
+        <div class="item-icon">🤖</div>
+        <div class="item-text"><h3>Update Pocket Agent</h3><p>Update the agent script to the latest version</p></div>
+      </div>
+      <div class="item-action"><button class="action-btn secondary" onclick="exec('cd ~/poket_agent && git pull')">Update</button></div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script>
+    // تنفيذ أمر Termux
+    function exec(cmd) {
+      if (window.TermuxBridge) {
+        TermuxBridge.runCommand(cmd, "settingsCallback");
+        showToast("⏳ Executing command...");
+      }
+    }
+
+    // فتح إعدادات النظام المتقدمة
+    function openSettings(type) {
+      if (!window.TermuxBridge) return;
+      let action = "";
+      switch (type) {
+        case 'accessibility': action = "android.settings.ACCESSIBILITY_SETTINGS"; break;
+        case 'notifications_listener': action = "android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS"; break;
+        case 'overlay': 
+          // يتطلب مسار الحزمة المحدد في أندرويد 11+
+          action = "android.settings.action.MANAGE_OVERLAY_PERMISSION"; break; 
+        case 'battery': action = "android.settings.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"; break;
+      }
+      if (action) TermuxBridge.openSystemSettings(action);
+    }
+
+    function settingsCallback(result) { showToast("✅ Command executed!"); }
+
+    // حفظ الإعدادات (سيتم ربطها بـ SharedPrefs في الجافا)
+    function saveSetting(key, value) {
+      if (window.TermuxBridge) {
+        TermuxBridge.savePreference(key, value);
+        showToast("✅ Setting saved!");
+      }
+    }
+
+    // تحميل الإعدادات والملخص عند فتح الصفحة
+    window.onload = () => {
+      if (window.TermuxBridge) {
+        // تحميل الإعدادات المحفوظة
+        const defView = TermuxBridge.getPreference("default_view") || "ai";
+        document.getElementById('defaultViewSelect').value = defView;
+        
+        // جلب بيانات الملخص (سنقوم بإنشاء هذه الدوال في الجافا لاحقاً)
+        // للتجربة فقط، سنضع بيانات وهمية حالياً
+        document.getElementById('stat-agent').innerText = "🟢 ON";
+        document.getElementById('stat-ip').innerText = "192.168.1.5";
+        
+        // يمكننا لاحقاً تنفيذ أوامر سريعة لجلب المعلومات الحقيقية
+        /*
+        TermuxBridge.runCommand("df -h /data | tail -1 | awk '{print $4}'", "updateStorage");
+        TermuxBridge.runCommand("free -m | grep Mem | awk '{print $2}'", "updateMem");
+        TermuxBridge.runCommand("ifconfig wlan0 | grep inet | awk '{print $2}'", "updateIP");
+        */
+      }
+    };
+
+    // دوال تحديث الملخص (تستدعى من Java)
+    function updateStorage(val) { document.getElementById('stat-storage').innerText = val.trim(); }
+    function updateMem(val) { document.getElementById('stat-mem').innerText = val.trim() + " MB"; }
+    function updateIP(val) { document.getElementById('stat-ip').innerText = val.trim(); }
+
+    // إشعار منبثق
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.classList.add('show');
+      setTimeout(() => { toast.classList.remove('show'); }, 2000);
+    }
+  </script>
+
 </body>
 </html>
