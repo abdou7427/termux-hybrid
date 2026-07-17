@@ -1,37 +1,173 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>AI Agent</title>
-  <style>
-    body {
-      background: #0d1117;
-      color: #c9d1d9;
-      font-family: sans-serif;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-      text-align: center;
-      margin: 0;
-    }
-    h1 { color: #58a6ff; }
-    p { color: #8b949e; }
-    code {
-      background: #21262d;
-      padding: 4px 8px;
-      border-radius: 4px;
-      color: #aff5b4;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>POCKET AGENT</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #0d1117; --chat-bg: #161b22; --user-msg: #1f6feb;
+            --ai-msg: #21262d; --text-primary: #e6edf3; --text-secondary: #8b949e;
+            --accent: #58a6ff; --border: #30363d; --code-bg: #0d1117;
+            --success: #3fb950; --danger: #f85149;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
+        body { background-color: var(--bg-color); color: var(--text-primary); display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        
+        .header { padding: 10px 15px; background: var(--chat-bg); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+        .header h1 { font-size: 18px; background: linear-gradient(90deg, #58a6ff, #bc8cff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .header-actions { display: flex; align-items: center; gap: 8px; }
+        .agent-controls { display: flex; align-items: center; gap: 6px; background: var(--bg-color); padding: 4px 8px; border-radius: 20px; border: 1px solid var(--border); }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--danger); transition: all 0.3s; }
+        .status-dot.online { background: var(--success); box-shadow: 0 0 5px var(--success); }
+        .ctrl-btn { background: none; border: none; color: var(--text-secondary); font-size: 16px; cursor: pointer; }
+        .ctrl-btn:hover { color: var(--accent); }
+        .lang-btn { background: var(--bg-color); border: 1px solid var(--border); color: white; font-size: 14px; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+
+        .chat-container { flex: 1; overflow-y: auto; padding: 20px; scroll-behavior: smooth; }
+        .message { margin-bottom: 15px; max-width: 85%; position: relative; animation: fadeIn 0.3s ease; }
+        .message.user { margin-left: auto; background: var(--user-msg); border-radius: 15px 15px 0 15px; padding: 10px 15px; }
+        .message.ai { margin-right: auto; background: var(--ai-msg); border-radius: 15px 15px 15px 0; padding: 10px 15px; border: 1px solid var(--border); }
+        .message.system { margin: 0 auto; background: transparent; color: var(--text-secondary); text-align: center; font-size: 12px; font-style: italic; margin-bottom: 20px; }
+        
+        .message.ai p { margin-bottom: 8px; line-height: 1.6; }
+        .message.ai a { color: var(--accent); text-decoration: underline; cursor: pointer; }
+        .code-block-wrapper { position: relative; margin: 10px 0; background: var(--code-bg); border-radius: 8px; overflow: hidden; border: 1px solid var(--border); }
+        .code-header { display: flex; justify-content: space-between; align-items: center; padding: 5px 10px; background: #161b22; font-size: 12px; color: var(--text-secondary); }
+        .code-actions button { background: none; border: 1px solid var(--border); color: var(--text-secondary); padding: 2px 8px; border-radius: 4px; cursor: pointer; margin-left: 5px; font-size: 11px; }
+        .code-actions button:hover { background: var(--border); color: white; }
+        .code-block-wrapper pre { margin: 0; padding: 10px; overflow-x: auto; }
+        .code-block-wrapper code { font-family: 'Courier New', monospace; font-size: 13px; }
+
+        .input-area { padding: 15px; background: var(--chat-bg); border-top: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+        .attach-btn, .send-btn { background: none; border: none; color: var(--text-secondary); font-size: 22px; cursor: pointer; flex-shrink: 0; }
+        .attach-btn:hover, .send-btn:hover { color: var(--accent); }
+        #user-input { flex: 1; background: var(--bg-color); border: 1px solid var(--border); border-radius: 20px; padding: 10px 15px; color: white; outline: none; font-size: 14px; resize: none; max-height: 100px; }
+        #user-input:focus { border-color: var(--accent); }
+
+        .typing { display: none; color: var(--text-secondary); font-style: italic; padding: 10px; }
+        .typing.visible { display: block; }
+
+        /* History Panel */
+        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 90; display: none; }
+        .overlay.visible { display: block; }
+        .history-panel { position: fixed; top: 0; left: -320px; width: 300px; height: 100%; background: var(--chat-bg); border-right: 1px solid var(--border); z-index: 100; transition: left 0.3s ease; display: flex; flex-direction: column; }
+        .history-panel.open { left: 0; }
+        .history-header { padding: 15px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+        .history-header h3 { color: var(--text-primary); font-size: 16px; }
+        .history-list { flex: 1; overflow-y: auto; padding: 10px; }
+        .history-item { padding: 12px; border-radius: 8px; cursor: pointer; margin-bottom: 5px; color: var(--text-primary); font-size: 13px; border: 1px solid transparent; }
+        .history-item:hover { background: var(--ai-msg); border-color: var(--border); }
+        .history-item .title { font-weight: bold; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .history-item .date { color: var(--text-secondary); font-size: 11px; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
 </head>
 <body>
-  <h1>🤖 AI Agent</h1>
-  <p>Placeholder — copy from <code>~/hybrid-server/ai_agent.html</code></p>
-  <p style="font-size: 12px; margin-top: 40px;">
-    Run in Termux:<br>
-    <code>cp ~/hybrid-server/ai_agent.html /sdcard/Download/</code>
-  </p>
+
+    <div class="overlay" id="overlay" onclick="toggleHistory()"></div>
+    <div class="history-panel" id="history-panel">
+        <div class="history-header">
+            <h3>🕰️ History</h3>
+            <button class="ctrl-btn" onclick="toggleHistory()">✕</button>
+        </div>
+        <div id="history-list" class="history-list"></div>
+    </div>
+
+    <div class="header">
+        <button class="ctrl-btn" onclick="toggleHistory()" title="Chat History">☰</button>
+        <h1>🤖 POCKET AGENT</h1>
+        <div class="header-actions">
+            <button id="lang-toggle" class="lang-btn" onclick="toggleTargetLang()" title="Toggle output language">🇬🇧</button>
+            <div class="agent-controls">
+                <div class="status-dot" id="agent-status"></div>
+                <button class="ctrl-btn" onclick="toggleAgent('start')" title="Start">▶️</button>
+                <button class="ctrl-btn" onclick="toggleAgent('stop')" title="Stop">⏹️</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="chat-container" id="chat-box">
+        <div class="typing" id="typing-indicator">Agent is generating...</div>
+    </div>
+
+    <div class="input-area">
+        <button class="attach-btn" onclick="attachFile()">📎</button>
+        <textarea id="user-input" rows="1" placeholder="Type a message..." onkeydown="handleKeyDown(event)"></textarea>
+        <button class="send-btn" onclick="sendMessage()">➤</button>
+    </div>
+
+    <script>
+        marked.setOptions({ highlight: function(code, lang) { return hljs.highlightAuto(code).value; }, breaks: true });
+        let currentFilePath = null;
+        let targetLanguage = 'en';
+
+        function toggleTargetLang() { const btn = document.getElementById('lang-toggle'); targetLanguage = targetLanguage === 'en' ? 'ar' : 'en'; btn.textContent = targetLanguage === 'ar' ? '🇸🇦' : '🇬🇧'; }
+        function toggleAgent(action) { let cmd = action === 'start' ? 'nohup python3 ~/poket_agent.py > /dev/null 2>&1 &' : 'pkill -f poket_agent.py'; if(window.TermuxBridge) TermuxBridge.runCommand(cmd, "handleAgentToggle"); }
+        function handleAgentToggle(result) { document.getElementById('agent-status').classList.toggle('online'); }
+
+        function sendMessage() {
+            const input = document.getElementById('user-input');
+            const text = input.value.trim();
+            if (!text && !currentFilePath) return;
+            let finalPrompt = text;
+            if (currentFilePath) { finalPrompt = `File: ${currentFilePath}\nPrompt: ${text}`; currentFilePath = null; document.getElementById('user-input').placeholder = "Type a message..."; }
+            appendMessage('user', text);
+            input.value = '';
+            document.getElementById('typing-indicator').classList.add('visible');
+            const translateChoice = targetLanguage === 'ar' ? 'y' : 'n';
+            const escapedPrompt = finalPrompt.replace(/"/g, '\\"').replace(/\n/g, '\\n');
+            const termuxCmd = `echo -e "${escapedPrompt}\\n${translateChoice}" | python3 ~/poket_agent.py`;
+            if(window.TermuxBridge) TermuxBridge.runCommand(termuxCmd, "handleAIOutput");
+        }
+
+        function handleAIOutput(result) {
+            document.getElementById('typing-indicator').classList.remove('visible');
+            let cleanResult = result.replace(/Translate to Arabic\? \(y\/n\):/gi, '').replace(/^\s*[yn]\s*$/gm, '').trim();
+            appendMessage('ai', cleanResult);
+        }
+
+        function appendMessage(sender, content) {
+            const chatBox = document.getElementById('chat-box');
+            const msgDiv = document.createElement('div');
+            msgDiv.classList.add('message', sender);
+            if (sender === 'ai') {
+                let rawHtml = marked.parse(content);
+                let cleanHtml = DOMPurify.sanitize(rawHtml, { ADD_TAGS: ['iframe'], ADD_ATTR: ['allow', 'allowfullscreen', 'frameborder', 'scrolling'] });
+                cleanHtml = cleanHtml.replace(/<a href="(.*?)"/g, `<a href="#" onclick="openInAppBrowser('$1')"`);
+                msgDiv.innerHTML = cleanHtml;
+                msgDiv.querySelectorAll('pre code').forEach((block) => {
+                    const wrapper = document.createElement('div'); wrapper.classList.add('code-block-wrapper');
+                    const header = document.createElement('div'); header.classList.add('code-header');
+                    const lang = block.className.match(/language-(\w+)/)?.[1] || 'code';
+                    header.innerHTML = `<span>${lang}</span><div class="code-actions"><button onclick="copyCode(this)">Copy</button>${lang === 'html' ? '<button onclick="previewHtml(this)">Preview</button>' : ''}</div>`;
+                    block.parentNode.parentNode.insertBefore(header, block.parentNode);
+                    block.parentNode.parentNode.classList.add('code-block-wrapper');
+                });
+            } else if (sender === 'system') { msgDiv.textContent = content; } 
+            else { msgDiv.textContent = content; }
+            chatBox.insertBefore(msgDiv, document.getElementById('typing-indicator'));
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        function openInAppBrowser(url) { if(window.TermuxBridge) TermuxBridge.openBrowser(url); }
+        function copyCode(btn) { navigator.clipboard.writeText(btn.closest('.code-block-wrapper').querySelector('code').innerText); btn.textContent = 'Copied!'; setTimeout(() => btn.textContent = 'Copy', 2000); }
+        function previewHtml(btn) { const blob = new Blob([btn.closest('.code-block-wrapper').querySelector('code').innerText], { type: 'text/html' }); if(window.TermuxBridge) TermuxBridge.openBrowser(URL.createObjectURL(blob)); }
+        function attachFile() { if(window.TermuxBridge) TermuxBridge.pickFile("onFileSelected"); }
+        function onFileSelected(filePath) { currentFilePath = filePath; document.getElementById('user-input').placeholder = `📎 ${filePath.split('/').pop()} attached`; }
+        function handleKeyDown(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }
+
+        // History Functions
+        function toggleHistory() { const panel = document.getElementById('history-panel'); const overlay = document.getElementById('overlay'); const isOpen = panel.classList.contains('open'); if (isOpen) { panel.classList.remove('open'); overlay.classList.remove('visible'); } else { panel.classList.add('open'); overlay.classList.add('visible'); fetchHistory(); } }
+        function fetchHistory() { const historyList = document.getElementById('history-list'); historyList.innerHTML = '<div class="history-item">Loading...</div>'; if(window.TermuxBridge) TermuxBridge.runCommand("python3 ~/webui/db_reader.py list", "handleHistoryList"); }
+        function handleHistoryList(result) { const historyList = document.getElementById('history-list'); historyList.innerHTML = ''; try { const history = JSON.parse(result); if (history.error) { historyList.innerHTML = `<div class="history-item">Error: ${history.error}</div>`; return; } if (history.length === 0) { historyList.innerHTML = '<div class="history-item">No history</div>'; return; } history.forEach(chat => { const item = document.createElement('div'); item.className = 'history-item'; item.innerHTML = `<div class="title">💬 ${chat.preview}</div><div class="date">${chat.start_time}</div>`; item.onclick = () => loadChat(chat.id); historyList.appendChild(item); }); } catch (e) { historyList.innerHTML = '<div class="history-item">Failed to load</div>'; } }
+        function loadChat(chatId) { toggleHistory(); document.getElementById('chat-box').innerHTML = '<div class="typing" id="typing-indicator">Agent is generating...</div>'; if(window.TermuxBridge) TermuxBridge.runCommand(`python3 ~/webui/db_reader.py get ${chatId}`, "handleLoadChat"); }
+        function handleLoadChat(result) { try { const messages = JSON.parse(result); messages.forEach(msg => appendMessage(msg.role === 'user' ? 'user' : 'ai', msg.content)); } catch (e) {} }
+    </script>
 </body>
 </html>
