@@ -202,6 +202,11 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     private WebView mCustomWebView;
     private WebView mBrowserWebView;
     private LinearLayout mBrowserContainer;
+    
+    private WebViewBridge mGlobalBridge;
+    private static final int REQUEST_CODE_PICK_FILE = 101;
+    private String pendingFileCallback = "";
+    
     private View mTerminalToolbarViewPager;  // ← شريط Extra Keys (ESC / CTRL / ALT)
 
     private static final String WEBUI_DIR = "/data/data/com.termux/files/home/webui";
@@ -248,7 +253,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         // ============================================================
         // HYBRID SYSTEM INITIALIZATION
         // ============================================================
-        
+
+        // ربط العناصر مع الواجهة
         mAiWebView = findViewById(R.id.hybrid_webview);
         mControlWebView = findViewById(R.id.kimi_control_webview);
         mCustomWebView = findViewById(R.id.custom_lab_webview);
@@ -257,15 +263,12 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         Toolbar browserToolbar = findViewById(R.id.browser_toolbar);
         mTerminalToolbarViewPager = findViewById(R.id.terminal_toolbar_view_pager);
 
-        // نسخ assets → Termux في أول تشغيل فقط
-        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
-        if (prefs.getBoolean(KEY_FIRST_RUN, true)) {
-            copyAssetsToTermux();
-            prefs.edit().putBoolean(KEY_FIRST_RUN, false).apply();
-        }
+        // إنشاء الجسر الموحد
+        mGlobalBridge = new WebViewBridge(this);
 
-        WebView[] allWebViews = {mAiWebView, mControlWebView, mCustomWebView, mBrowserWebView};
-        for (WebView wv : allWebViews) {
+        // إعداد WebViews الموثوقة (AI, Control, Browser)
+        WebView[] trustedWebViews = {mAiWebView, mControlWebView, mBrowserWebView};
+        for (WebView wv : trustedWebViews) {
             WebSettings ws = wv.getSettings();
             ws.setJavaScriptEnabled(true);
             ws.setDomStorageEnabled(true);
@@ -275,12 +278,28 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
                 ws.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
             }
             wv.setWebChromeClient(new WebChromeClient());
-            wv.addJavascriptInterface(new WebViewBridge(this), "TermuxBridge");
+            wv.addJavascriptInterface(mGlobalBridge, "TermuxBridge"); // حقن الجسر
         }
 
-        // تحميل من Termux مباشرة (بدون HTTP وبدون سيرفر)
+        // إعداد Custom Lab (بدون جسر للأمان - Sandboxed)
+        WebSettings customWs = mCustomWebView.getSettings();
+        customWs.setJavaScriptEnabled(true);
+        customWs.setDomStorageEnabled(true);
+        customWs.setAllowFileAccess(true);
+        customWs.setAllowContentAccess(true);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            customWs.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+        }
+        mCustomWebView.setWebChromeClient(new WebChromeClient());
+        // لا نضيف addJavascriptInterface هنا أبداً لحماية التطبيق!
+
+        // نسخ الملفات في الخلفية لمنع تجميد التطبيق
+        new Thread(this::copyAssetsToTermux).start();
+
+        // تحميل الواجهات من Termux
         loadAllWebViews();
 
+        // إعداد المتصفح المنبثق
         browserToolbar.setNavigationOnClickListener(v -> {
             mBrowserContainer.setVisibility(View.GONE);
             mBrowserWebView.loadUrl("about:blank");
@@ -289,13 +308,13 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             }
         });
 
+        // أزرار التنقل الجانبية
         findViewById(R.id.btn_switch_to_webview).setOnClickListener(v -> switchToView(mAiWebView));
         findViewById(R.id.btn_switch_to_control).setOnClickListener(v -> switchToView(mControlWebView));
         findViewById(R.id.btn_switch_to_custom_lab).setOnClickListener(v -> switchToView(mCustomWebView));
         findViewById(R.id.btn_switch_to_terminal).setOnClickListener(v -> switchToView(null));
-
         findViewById(R.id.settings_button).setOnClickListener(v -> showSettingsPopup());
-
+        
         // ============================================================
         // END HYBRID SYSTEM
         // ============================================================
@@ -1103,26 +1122,31 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         File destDir = new File(WEBUI_DIR);
         if (!destDir.exists()) destDir.mkdirs();
 
-        String[] files = {"ai_agent.html", "control.html", "custom.html", "settings.html"};
+        // أضفنا db_reader.py للقائمة ليتم نسخه مع ملفات الـ HTML
+        String[] files = {"ai_agent.html", "control.html", "custom.html", "settings.html", "db_reader.py"};
         for (String file : files) {
-            try {
-                InputStream in = getAssets().open("webui/" + file);
-                File outFile = new File(destDir, file);
-                FileOutputStream out = new FileOutputStream(outFile);
+            File outFile = new File(destDir, file);
+            // ننسخ الملف فقط إذا لم يكن موجوداً مسبقاً، لحفظ تعديلات المستخدم المستقبلية
+            if (!outFile.exists()) {
+                try {
+                    InputStream in = getAssets().open("webui/" + file);
+                    FileOutputStream out = new FileOutputStream(outFile);
 
-                byte[] buffer = new byte[1024];
-                int read;
-                while ((read = in.read(buffer)) != -1) {
-                    out.write(buffer, 0, read);
+                    byte[] buffer = new byte[1024];
+                    int read;
+                    while ((read = in.read(buffer)) != -1) {
+                        out.write(buffer, 0, read);
+                    }
+                    in.close();
+                    out.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
                 }
-                in.close();
-                out.close();
-            } catch (IOException e) {
-                e.printStackTrace();
             }
         }
-        Toast.makeText(this, "WebUI copied to ~/webui", Toast.LENGTH_SHORT).show();
     }
+    
+    
 
     /**
      * تحميل جميع WebViews من ~/webui
@@ -1148,34 +1172,34 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
      /**
      * Switch between environments
      */
+
     private void switchToView(WebView targetWebView) {
         DrawerLayout drawer = findViewById(R.id.drawer_layout);
 
-        // Hide all
         mAiWebView.setVisibility(View.GONE);
         mControlWebView.setVisibility(View.GONE);
         mCustomWebView.setVisibility(View.GONE);
         mBrowserContainer.setVisibility(View.GONE);
 
         if (targetWebView == null) {
-            // Terminal mode
             mTerminalView.setVisibility(View.VISIBLE);
             mTerminalView.requestFocus();
-            showTermuxToolbar(true);   // ← إظهار ESC / CTRL / ALT
+            showTermuxToolbar(true);
+            mGlobalBridge.setActiveWebView(null); // فصل الجسر عن الويب
         } else {
-            // Web mode
             mTerminalView.setVisibility(View.GONE);
             targetWebView.setVisibility(View.VISIBLE);
             targetWebView.requestFocus();
-            showTermuxToolbar(false);  // ← إخفاء ESC / CTRL / ALT
+            showTermuxToolbar(false);
+            mGlobalBridge.setActiveWebView(targetWebView); // ربط الجسر بالويب النشط
         }
 
         drawer.closeDrawer(GravityCompat.START);
-    }
+   }
 
-     /**
+    /**
      * Show settings popup
-     */
+    */
     private void showSettingsPopup() {
         android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
         WebView settingsWebView = new WebView(this);
@@ -1187,7 +1211,9 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             ws.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
         }
-        settingsWebView.addJavascriptInterface(new WebViewBridge(this), "TermuxBridge");
+        // استخدام الجسر الموحد وإعداد الويب فيو النشط
+        settingsWebView.addJavascriptInterface(mGlobalBridge, "TermuxBridge");
+        mGlobalBridge.setActiveWebView(settingsWebView); 
         settingsWebView.loadUrl("file://" + WEBUI_DIR + "/settings.html");
 
         builder.setTitle("⚙️ Settings")
@@ -1195,9 +1221,16 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
                .setPositiveButton("System Settings", (d, w) -> {
                    startActivity(new Intent(android.provider.Settings.ACTION_SETTINGS));
                })
-               .setNegativeButton("Close", null)
+               .setNegativeButton("Close", (d, w) -> {
+                   // إعادة الويب فيو النشط للواجهة الأصلية عند الإغلاق
+                   mGlobalBridge.setActiveWebView(mAiWebView); 
+               })
+               .setOnCancelListener(d -> {
+                   mGlobalBridge.setActiveWebView(mAiWebView);
+               })
                .show();
     }
+    
     
      /**
      * Open browser popup
@@ -1209,6 +1242,46 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             mBrowserWebView.bringToFront();
             mBrowserWebView.loadUrl(url);
         });
+    }
+
+    // تستدعى من WebViewBridge لفتح مدير الملفات
+    public void requestFilePick(String callbackFunction) {
+        pendingFileCallback = callbackFunction;
+        Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+        intent.setType("*/*");
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        startActivityForResult(Intent.createChooser(intent, "Select File"), REQUEST_CODE_PICK_FILE);
+    }
+
+    // استقبال الملف المختار وإرسال مساره للويب
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_CODE_PICK_FILE && resultCode == RESULT_OK && data != null) {
+            android.net.Uri uri = data.getData();
+            if (uri != null) {
+                new Thread(() -> {
+                    try {
+                        String fileName = "uploaded_file_" + System.currentTimeMillis();
+                        File destFile = new File(WEBUI_DIR, fileName);
+                        InputStream in = getContentResolver().openInputStream(uri);
+                        FileOutputStream out = new FileOutputStream(destFile);
+                        byte[] buffer = new byte[1024];
+                        int read;
+                        while ((read = in.read(buffer)) != -1) {
+                            out.write(buffer, 0, read);
+                        }
+                        in.close();
+                        out.close();
+                    
+                        String realPath = destFile.getAbsolutePath();
+                        mGlobalBridge.sendToWebViewDirect(pendingFileCallback, realPath);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }).start();
+            }
+        }
     }
  
 }
