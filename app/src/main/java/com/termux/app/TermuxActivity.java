@@ -898,11 +898,41 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         Logger.logVerbose(LOG_TAG, "onActivityResult: requestCode: " + requestCode + ", resultCode: "  + resultCode + ", data: "  + IntentUtils.getIntentString(data));
+        if (handleFilePickerResult(requestCode, resultCode, data)) return;
         if (requestCode == PermissionUtils.REQUEST_GRANT_STORAGE_PERMISSION) {
             requestStoragePermission(true);
         }
     }
-
+    
+    private boolean handleFilePickerResult(int requestCode, int resultCode, Intent data) {
+        if (requestCode == REQUEST_CODE_PICK_FILE && resultCode == RESULT_OK && data != null) {
+            android.net.Uri uri = data.getData();
+            if (uri != null) {
+                new Thread(() -> {
+                    try {
+                        String fileName = "uploaded_file_" + System.currentTimeMillis();
+                        File destFile = new File(WEBUI_DIR, fileName);
+                        InputStream in = getContentResolver().openInputStream(uri);
+                        FileOutputStream out = new FileOutputStream(destFile);
+                        byte[] buffer = new byte[1024];
+                        int read;
+                        while ((read = in.read(buffer)) != -1) {
+                            out.write(buffer, 0, read);
+                        }
+                        in.close();
+                        out.close();
+                    
+                        String realPath = destFile.getAbsolutePath();
+                        mGlobalBridge.sendToWebViewDirect(pendingFileCallback, realPath);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }).start();
+            }
+            return true; // تم التعامل مع الحدث بنجاح
+        }
+        return false; // الحدث لا يخص اختيار الملفات
+    }
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
@@ -1173,7 +1203,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
      * Switch between environments
      */
 
-    private void switchToView(WebView targetWebView) {
+    public void switchToView(WebView targetWebView) {
         DrawerLayout drawer = findViewById(R.id.drawer_layout);
 
         mAiWebView.setVisibility(View.GONE);
@@ -1252,7 +1282,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         intent.addCategory(Intent.CATEGORY_OPENABLE);
         startActivityForResult(Intent.createChooser(intent, "Select File"), REQUEST_CODE_PICK_FILE);
     }
-
+/**
     // استقبال الملف المختار وإرسال مساره للويب
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
@@ -1283,5 +1313,5 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             }
         }
     }
- 
+ */
 }
