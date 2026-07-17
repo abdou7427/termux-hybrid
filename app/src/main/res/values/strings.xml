@@ -57,6 +57,8 @@
     <string name="msg_enabling_terminal_toolbar">Enabling Terminal Toolbar</string>
     <string name="msg_disabling_terminal_toolbar">Disabling Terminal Toolbar</string>
 
+    <string name="accessibility_service_description">Allows Pocket Agent to automate UI interactions, click buttons, and read screen content on your behalf.</string>
+
 
 
     <!-- Terminal Popup -->
