@@ -1,37 +1,156 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Control Panel</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🎛️ Control Panel</title>
   <style>
-    body {
-      background: #0a0e27;
-      color: #e0e6ed;
-      font-family: sans-serif;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-      text-align: center;
-      margin: 0;
+    :root {
+      --bg-color: #0d1117; --chat-bg: #161b22; --text-primary: #c9d1d9;
+      --accent: #f0883e; --border: #30363d; --success: #238636; --danger: #da3633;
+      --terminal-green: #3fb950;
     }
-    h1 { color: #00d4ff; }
-    p { color: #8b92a8; }
-    code {
-      background: #111936;
-      padding: 4px 8px;
-      border-radius: 4px;
-      color: #00ff88;
-    }
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Courier New', monospace; }
+    body { background: var(--bg-color); color: var(--text-primary); height: 100vh; display: flex; flex-direction: column; }
+
+    .header { padding: 10px 16px; background: var(--chat-bg); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+    .header h2 { flex: 1; color: var(--accent); font-size: 16px; }
+    .header-btn { background: #21262d; border: 1px solid var(--border); color: var(--text-primary); padding: 5px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; font-family: monospace; }
+    .header-btn:hover { background: var(--border); }
+
+    .quick-cmds { padding: 10px 16px; background: var(--bg-color); border-bottom: 1px solid var(--border); display: flex; gap: 8px; flex-wrap: wrap; }
+    .cmd-btn { background: rgba(31, 77, 46, 0.3); border: 1px solid var(--success); color: #aff5b4; padding: 6px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; font-family: monospace; }
+    .cmd-btn:hover { background: var(--success); color: white; }
+    .cmd-btn.danger { background: rgba(60, 22, 24, 0.3); border-color: var(--danger); color: #f85149; }
+    .cmd-btn.danger:hover { background: var(--danger); color: white; }
+    .cmd-btn.warn { background: rgba(59, 36, 12, 0.3); border-color: #d29922; color: #e3b341; }
+    .cmd-btn.warn:hover { background: #d29922; color: black; }
+
+    .terminal { flex: 1; background: #000; padding: 12px; overflow-y: auto; font-size: 13px; line-height: 1.5; position: relative; }
+    .terminal::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: repeating-linear-gradient(0deg, rgba(0,255,0,0.03) 0px, rgba(0,255,0,0.03) 1px, transparent 1px, transparent 2px); pointer-events: none; z-index: 1; }
+    .line { margin: 2px 0; word-wrap: break-word; z-index: 2; position: relative; }
+    .prompt-sign { color: var(--terminal-green); font-weight: bold; }
+    .path-sign { color: #58a6ff; }
+    .output { color: var(--text-primary); }
+    .error { color: #f85149; }
+    .system { color: #8b949e; font-style: italic; }
+
+    .input-bar { display: flex; gap: 8px; padding: 10px 14px; background: var(--chat-bg); border-top: 1px solid var(--border); align-items: center; }
+    .prompt-display { color: var(--terminal-green); font-size: 14px; white-space: nowrap; }
+    .path-display { color: #58a6ff; font-size: 14px; white-space: nowrap; margin-right: 2px; }
+    .input-bar input { flex: 1; background: #000; border: 1px solid var(--border); color: var(--terminal-green); padding: 10px 14px; border-radius: 6px; font-family: monospace; font-size: 14px; outline: none; }
+    .input-bar input:focus { border-color: var(--terminal-green); box-shadow: 0 0 5px rgba(63, 185, 80, 0.3); }
+    .run-btn { background: var(--success); border: none; color: white; padding: 10px 18px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+    .run-btn:hover { background: #2ea043; }
   </style>
 </head>
 <body>
-  <h1>🎛️ Control Panel</h1>
-  <p>Placeholder — copy from <code>~/hybrid-server/control.html</code></p>
-  <p style="font-size: 12px; margin-top: 40px;">
-    Run in Termux:<br>
-    <code>cp ~/hybrid-server/control.html /sdcard/Download/</code>
-  </p>
+
+  <div class="header">
+    <h2>🎛️ Control Panel</h2>
+    <button class="header-btn" onclick="clearTerm()">🗑️ Clear</button>
+    <button class="header-btn" onclick="openNativeTerminal()">🖥️ Native</button>
+  </div>
+
+  <div class="quick-cmds">
+    <button class="cmd-btn" onclick="send('ls -la')">📂 ls -la</button>
+    <button class="cmd-btn" onclick="send('pwd')">📍 pwd</button>
+    <button class="cmd-btn" onclick="send('neofetch')">🖥️ neofetch</button>
+    <button class="cmd-btn warn" onclick="send('pkg update && pkg upgrade -y')">🔄 Update Pkg</button>
+    <button class="cmd-btn" onclick="send('pip list')">🐍 pip list</button>
+    <button class="cmd-btn" onclick="send('termux-setup-storage')">📁 Storage</button>
+    <button class="cmd-btn" onclick="send('ifconfig 2>/dev/null || ip addr')">🌐 Network</button>
+    <button class="cmd-btn danger" onclick="send('exit')">❌ Exit</button>
+  </div>
+
+  <div class="terminal" id="terminal">
+    <div class="line system">$ Control Panel connected to Termux Engine (Streaming)</div>
+    <div class="line system">Type commands or use quick buttons. 'cd' is tracked locally.</div>
+  </div>
+
+  <div class="input-bar">
+    <span class="prompt-display">┌──(</span><span class="path-display" id="pathPreview">termux</span><span class="prompt-display">)-[~]</span>
+    <input type="text" id="cmdInput" placeholder="type command..." onkeydown="if(event.key==='Enter') runInput()" autofocus>
+    <button class="run-btn" onclick="runInput()">▶</button>
+  </div>
+
+  <script>
+    const terminal = document.getElementById('terminal');
+    const cmdInput = document.getElementById('cmdInput');
+    const pathPreview = document.getElementById('pathPreview');
+    
+    let currentCwd = "~"; 
+    let isRunning = false; 
+
+    function parseAnsi(text) {
+      return text.replace(/\x1b\[31m/g, '<span style="color:#f85149">').replace(/\x1b\[32m/g, '<span style="color:#3fb950">')
+        .replace(/\x1b\[33m/g, '<span style="color:#d29922">').replace(/\x1b\[34m/g, '<span style="color:#58a6ff">')
+        .replace(/\x1b\[35m/g, '<span style="color:#bc8cff">').replace(/\x1b\[36m/g, '<span style="color:#39c5cf">')
+        .replace(/\x1b\[1m/g, '<span style="font-weight:bold">').replace(/\x1b\[0m/g, '</span>');
+    }
+
+    function addLine(html, cls) {
+      const div = document.createElement('div');
+      div.className = 'line ' + (cls || 'output');
+      div.innerHTML = html; 
+      terminal.appendChild(div);
+      terminal.scrollTop = terminal.scrollHeight;
+    }
+
+    function getPromptStr() {
+      return `<span class="prompt-sign">┌──(</span><span class="path-sign">termux</span><span class="prompt-sign">)-[</span><span style="color:white">${currentCwd}</span><span class="prompt-sign">]</span>`;
+    }
+
+    function send(cmd) {
+      if (isRunning) return;
+      addLine(getPromptStr(), 'prompt');
+      addLine(`<span class="prompt-sign">└─$</span> ${cmd}`, 'prompt');
+
+      if (cmd.startsWith('cd ') || cmd === 'cd') {
+        isRunning = true;
+        cmdInput.disabled = true;
+        const resolveCmd = cmd === 'cd' ? 'cd ~ && pwd' : `${cmd} && pwd`;
+        if (window.TermuxBridge) window.TermuxBridge.runCommand(resolveCmd, "handleCdResolution");
+        return;
+      }
+
+      isRunning = true;
+      cmdInput.disabled = true;
+      const effectiveCwd = currentCwd === '~' ? '$HOME' : currentCwd;
+      const finalCmd = `cd ${effectiveCwd} && ${cmd}`;
+
+      if (window.TermuxBridge) window.TermuxBridge.runCommandStream(finalCmd, "handleTerminalStream");
+    }
+
+    function handleCdResolution(result) {
+      isRunning = false; cmdInput.disabled = false; cmdInput.focus();
+      let cleanResult = result.trim();
+      if (cleanResult.startsWith('/')) {
+        const homeDir = "/data/data/com.termux/files/home";
+        currentCwd = cleanResult === homeDir ? '~' : cleanResult;
+        pathPreview.innerText = currentCwd === '~' ? 'termux' : currentCwd.split('/').pop();
+        addLine(`Directory changed to ${currentCwd}`, 'system');
+      } else {
+        addLine(cleanResult, 'error');
+      }
+    }
+
+    function handleTerminalStream(line) {
+      if (line === "__EXECUTION_DONE__") {
+        isRunning = false; cmdInput.disabled = false; cmdInput.focus(); return;
+      }
+      addLine(parseAnsi(line), 'output');
+    }
+
+    function runInput() {
+      const cmd = cmdInput.value.trim();
+      if (!cmd) return;
+      send(cmd);
+      cmdInput.value = '';
+    }
+
+    function clearTerm() { terminal.innerHTML = ''; addLine("Terminal cleared.", 'system'); }
+    function openNativeTerminal() { if (window.TermuxBridge) window.TermuxBridge.openNativeTerminal(); }
+  </script>
 </body>
 </html>
