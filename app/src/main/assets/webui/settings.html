@@ -14,20 +14,17 @@
     body { background-color: var(--bg-color); color: var(--text-primary); padding: 15px; overflow-y: auto; }
     
     .section-title { color: var(--text-secondary); font-size: 12px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; margin: 20px 0 10px 5px; }
-    
     .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-bottom: 15px; }
     .card-item { padding: 12px 15px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); }
     .card-item:last-child { border-bottom: none; }
-    
     .item-info { display: flex; align-items: center; gap: 12px; flex: 1; }
     .item-icon { font-size: 20px; width: 30px; text-align: center; }
     .item-text h3 { font-size: 14px; color: var(--text-primary); margin-bottom: 2px; }
     .item-text p { font-size: 11px; color: var(--text-secondary); }
-    
     .item-action { flex-shrink: 0; }
     
     /* Buttons */
-    .action-btn { background: var(--success); color: white; border: none; padding: 6px 14px; border-radius: 6px; font-size: 12px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+    .action-btn { background: var(--success); color: white; border: none; padding: 6px 14px; border-radius: 6px; font-size: 12px; cursor: pointer; font-weight: bold; }
     .action-btn:hover { opacity: 0.9; }
     .action-btn.secondary { background: #21262d; border: 1px solid var(--border); color: var(--text-primary); }
     .action-btn.warning { background: var(--warning); color: black; }
@@ -64,31 +61,19 @@
   <div class="section-title">🤖 Automation Permissions</div>
   <div class="card">
     <div class="card-item">
-      <div class="item-info">
-        <div class="item-icon">♿</div>
-        <div class="item-text"><h3>Accessibility</h3><p>Required for UI automation & screen reading</p></div>
-      </div>
+      <div class="item-info"><div class="item-icon">♿</div><div class="item-text"><h3>Accessibility</h3><p>Required for UI automation & screen reading</p></div></div>
       <div class="item-action"><button class="action-btn warning" onclick="openSettings('accessibility')">Open</button></div>
     </div>
     <div class="card-item">
-      <div class="item-info">
-        <div class="item-icon">🔔</div>
-        <div class="item-text"><h3>Notification Access</h3><p>Required to read and reply to notifications</p></div>
-      </div>
+      <div class="item-info"><div class="item-icon">🔔</div><div class="item-text"><h3>Notification Access</h3><p>Required to read and reply to notifications</p></div></div>
       <div class="item-action"><button class="action-btn warning" onclick="openSettings('notifications_listener')">Open</button></div>
     </div>
     <div class="card-item">
-      <div class="item-info">
-        <div class="item-icon">🖼️</div>
-        <div class="item-text"><h3>Draw Over Apps</h3><p>Required to show floating agent controls</p></div>
-      </div>
+      <div class="item-info"><div class="item-icon">🖼️</div><div class="item-text"><h3>Draw Over Apps</h3><p>Required to show floating agent controls</p></div></div>
       <div class="item-action"><button class="action-btn warning" onclick="openSettings('overlay')">Open</button></div>
     </div>
     <div class="card-item">
-      <div class="item-info">
-        <div class="item-icon">🔋</div>
-        <div class="item-text"><h3>Battery Optimization</h3><p>Prevent Android from killing the agent</p></div>
-      </div>
+      <div class="item-info"><div class="item-icon">🔋</div><div class="item-text"><h3>Battery Optimization</h3><p>Prevent Android from killing the agent</p></div></div>
       <div class="item-action"><button class="action-btn secondary" onclick="openSettings('battery')">Ignore</button></div>
     </div>
   </div>
@@ -97,10 +82,7 @@
   <div class="section-title">🌐 Language & Behavior</div>
   <div class="card">
     <div class="card-item">
-      <div class="item-info">
-        <div class="item-icon">🏠</div>
-        <div class="item-text"><h3>Default View</h3><p>Choose which screen opens on app launch</p></div>
-      </div>
+      <div class="item-info"><div class="item-icon">🏠</div><div class="item-text"><h3>Default View</h3><p>Choose which screen opens on app launch</p></div></div>
       <div class="item-action">
         <select id="defaultViewSelect" onchange="saveSetting('default_view', this.value)">
           <option value="ai">🤖 AI Agent</option>
@@ -110,10 +92,7 @@
       </div>
     </div>
     <div class="card-item">
-      <div class="item-info">
-        <div class="item-icon">🗣️</div>
-        <div class="item-text"><h3>Language</h3><p>Change app interface language (Coming soon)</p></div>
-      </div>
+      <div class="item-info"><div class="item-icon">🗣️</div><div class="item-text"><h3>Language</h3><p>Change app interface language (Coming soon)</p></div></div>
       <div class="item-action">
         <select id="langSelect" onchange="saveSetting('app_lang', this.value)" disabled>
           <option value="en">English</option>
@@ -127,18 +106,12 @@
   <div class="section-title">🔄 Updates</div>
   <div class="card">
     <div class="card-item">
-      <div class="item-info">
-        <div class="item-icon">📦</div>
-        <div class="item-text"><h3>Update Termux Packages</h3><p>pkg update && pkg upgrade -y</p></div>
-      </div>
+      <div class="item-info"><div class="item-icon">📦</div><div class="item-text"><h3>Update Termux Packages</h3><p>pkg update && pkg upgrade -y</p></div></div>
       <div class="item-action"><button class="action-btn secondary" onclick="exec('pkg update && pkg upgrade -y')">Update</button></div>
     </div>
     <div class="card-item">
-      <div class="item-info">
-        <div class="item-icon">🤖</div>
-        <div class="item-text"><h3>Update Pocket Agent</h3><p>Update the agent script to the latest version</p></div>
-      </div>
-      <div class="item-action"><button class="action-btn secondary" onclick="exec('cd ~/poket_agent && git pull')">Update</button></div>
+      <div class="item-info"><div class="item-icon">🤖</div><div class="item-text"><h3>Update Pocket Agent</h3><p>Update the agent script to the latest version</p></div></div>
+      <div class="item-action"><button class="action-btn secondary" onclick="exec('cd ~/agent_project && git pull')">Update</button></div>
     </div>
   </div>
 
@@ -146,12 +119,7 @@
 
   <script>
     // تنفيذ أمر Termux
-    function exec(cmd) {
-      if (window.TermuxBridge) {
-        TermuxBridge.runCommand(cmd, "settingsCallback");
-        showToast("⏳ Executing command...");
-      }
-    }
+    function exec(cmd) { if (window.TermuxBridge) { TermuxBridge.runCommand(cmd, "settingsCallback"); showToast("⏳ Executing command..."); } }
 
     // فتح إعدادات النظام المتقدمة
     function openSettings(type) {
@@ -160,9 +128,7 @@
       switch (type) {
         case 'accessibility': action = "android.settings.ACCESSIBILITY_SETTINGS"; break;
         case 'notifications_listener': action = "android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS"; break;
-        case 'overlay': 
-          // يتطلب مسار الحزمة المحدد في أندرويد 11+
-          action = "android.settings.action.MANAGE_OVERLAY_PERMISSION"; break; 
+        case 'overlay': action = "android.settings.action.MANAGE_OVERLAY_PERMISSION"; break; 
         case 'battery': action = "android.settings.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"; break;
       }
       if (action) TermuxBridge.openSystemSettings(action);
@@ -170,32 +136,22 @@
 
     function settingsCallback(result) { showToast("✅ Command executed!"); }
 
-    // حفظ الإعدادات (سيتم ربطها بـ SharedPrefs في الجافا)
-    function saveSetting(key, value) {
-      if (window.TermuxBridge) {
-        TermuxBridge.savePreference(key, value);
-        showToast("✅ Setting saved!");
-      }
-    }
+    // حفظ الإعدادات
+    function saveSetting(key, value) { if (window.TermuxBridge) { TermuxBridge.savePreference(key, value); showToast("✅ Setting saved!"); } }
 
     // تحميل الإعدادات والملخص عند فتح الصفحة
     window.onload = () => {
       if (window.TermuxBridge) {
-        // تحميل الإعدادات المحفوظة
         const defView = TermuxBridge.getPreference("default_view") || "ai";
         document.getElementById('defaultViewSelect').value = defView;
         
-        // جلب بيانات الملخص (سنقوم بإنشاء هذه الدوال في الجافا لاحقاً)
-        // للتجربة فقط، سنضع بيانات وهمية حالياً
-        document.getElementById('stat-agent').innerText = "🟢 ON";
-        document.getElementById('stat-ip').innerText = "192.168.1.5";
-        
-        // يمكننا لاحقاً تنفيذ أوامر سريعة لجلب المعلومات الحقيقية
-        /*
+        // جلب بيانات ملخص النظام
         TermuxBridge.runCommand("df -h /data | tail -1 | awk '{print $4}'", "updateStorage");
         TermuxBridge.runCommand("free -m | grep Mem | awk '{print $2}'", "updateMem");
-        TermuxBridge.runCommand("ifconfig wlan0 | grep inet | awk '{print $2}'", "updateIP");
-        */
+        TermuxBridge.runCommand("ifconfig wlan0 2>/dev/null | grep inet | awk '{print $2}' || ip -4 addr show wlan0 | grep inet | awk '{print $2}'", "updateIP");
+        
+        // التحقق من حالة الوكيل
+        TermuxBridge.runCommand("pgrep -f poket_agent.py", "checkAgentStatus");
       }
     };
 
@@ -203,15 +159,12 @@
     function updateStorage(val) { document.getElementById('stat-storage').innerText = val.trim(); }
     function updateMem(val) { document.getElementById('stat-mem').innerText = val.trim() + " MB"; }
     function updateIP(val) { document.getElementById('stat-ip').innerText = val.trim(); }
+    function checkAgentStatus(result) { 
+      if(result.trim() !== "") { document.getElementById('stat-agent').innerText = "🟢 ON"; document.getElementById('stat-agent').style.color = "#3fb950"; } 
+    }
 
     // إشعار منبثق
-    function showToast(message) {
-      const toast = document.getElementById('toast');
-      toast.textContent = message;
-      toast.classList.add('show');
-      setTimeout(() => { toast.classList.remove('show'); }, 2000);
-    }
+    function showToast(message) { const toast = document.getElementById('toast'); toast.textContent = message; toast.classList.add('show'); setTimeout(() => { toast.classList.remove('show'); }, 2000); }
   </script>
-
 </body>
 </html>
