@@ -52,7 +52,6 @@
         .typing { display: none; color: var(--text-secondary); font-style: italic; padding: 10px; }
         .typing.visible { display: block; }
 
-        /* History Panel */
         .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 90; display: none; }
         .overlay.visible { display: block; }
         .history-panel { position: fixed; top: 0; left: -320px; width: 300px; height: 100%; background: var(--chat-bg); border-right: 1px solid var(--border); z-index: 100; transition: left 0.3s ease; display: flex; flex-direction: column; }
@@ -83,6 +82,7 @@
         <button class="ctrl-btn" onclick="toggleHistory()" title="Chat History">☰</button>
         <h1>🤖 POCKET AGENT</h1>
         <div class="header-actions">
+            <button class="ctrl-btn" onclick="clearChat()" title="Clear Chat">🔄</button>
             <button id="lang-toggle" class="lang-btn" onclick="toggleTargetLang()" title="Toggle output language">🇬🇧</button>
             <div class="agent-controls">
                 <div class="status-dot" id="agent-status"></div>
@@ -107,8 +107,12 @@
         let currentFilePath = null;
         let targetLanguage = 'en';
 
+        function clearChat() {
+            document.getElementById('chat-box').innerHTML = '<div class="typing" id="typing-indicator">Agent is generating...</div>';
+        }
+
         function toggleTargetLang() { const btn = document.getElementById('lang-toggle'); targetLanguage = targetLanguage === 'en' ? 'ar' : 'en'; btn.textContent = targetLanguage === 'ar' ? '🇸🇦' : '🇬🇧'; }
-        function toggleAgent(action) { let cmd = action === 'start' ? 'nohup python3 ~/poket_agent.py > /dev/null 2>&1 &' : 'pkill -f poket_agent.py'; if(window.TermuxBridge) TermuxBridge.runCommand(cmd, "handleAgentToggle"); }
+        function toggleAgent(action) { let cmd = action === 'start' ? 'nohup /data/data/com.termux/files/usr/bin/python3 /data/data/com.termux/files/home/agent_project/agent.py > /dev/null 2>&1 &' : 'pkill -f agent.py'; if(window.TermuxBridge) TermuxBridge.runCommand(cmd, "handleAgentToggle"); }
         function handleAgentToggle(result) { document.getElementById('agent-status').classList.toggle('online'); }
 
         function sendMessage() {
@@ -120,16 +124,20 @@
             appendMessage('user', text);
             input.value = '';
             document.getElementById('typing-indicator').classList.add('visible');
+            
             const translateChoice = targetLanguage === 'ar' ? 'y' : 'n';
             const escapedPrompt = finalPrompt.replace(/"/g, '\\"').replace(/\n/g, '\\n');
-            const termuxCmd = `echo -e "${escapedPrompt}\\n${translateChoice}" | python3 ~/poket_agent.py`;
+            const filePathArg = currentFilePath || "";
+            
+            // استخدام سكربت التشغيل الوسيط لضمان بيئة Termux الكاملة
+            const termuxCmd = `/data/data/com.termux/files/home/webui/run_agent.sh "${escapedPrompt}" ${translateChoice} "${filePathArg}"`;
+            
             if(window.TermuxBridge) TermuxBridge.runCommand(termuxCmd, "handleAIOutput");
         }
 
         function handleAIOutput(result) {
             document.getElementById('typing-indicator').classList.remove('visible');
-            let cleanResult = result.replace(/Translate to Arabic\? \(y\/n\):/gi, '').replace(/^\s*[yn]\s*$/gm, '').trim();
-            appendMessage('ai', cleanResult);
+            appendMessage('ai', result);
         }
 
         function appendMessage(sender, content) {
@@ -162,11 +170,10 @@
         function onFileSelected(filePath) { currentFilePath = filePath; document.getElementById('user-input').placeholder = `📎 ${filePath.split('/').pop()} attached`; }
         function handleKeyDown(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }
 
-        // History Functions
         function toggleHistory() { const panel = document.getElementById('history-panel'); const overlay = document.getElementById('overlay'); const isOpen = panel.classList.contains('open'); if (isOpen) { panel.classList.remove('open'); overlay.classList.remove('visible'); } else { panel.classList.add('open'); overlay.classList.add('visible'); fetchHistory(); } }
-        function fetchHistory() { const historyList = document.getElementById('history-list'); historyList.innerHTML = '<div class="history-item">Loading...</div>'; if(window.TermuxBridge) TermuxBridge.runCommand("python3 ~/webui/db_reader.py list", "handleHistoryList"); }
+        function fetchHistory() { const historyList = document.getElementById('history-list'); historyList.innerHTML = '<div class="history-item">Loading...</div>'; if(window.TermuxBridge) TermuxBridge.runCommand("/data/data/com.termux/files/usr/bin/python3 /data/data/com.termux/files/home/webui/db_reader.py list", "handleHistoryList"); }
         function handleHistoryList(result) { const historyList = document.getElementById('history-list'); historyList.innerHTML = ''; try { const history = JSON.parse(result); if (history.error) { historyList.innerHTML = `<div class="history-item">Error: ${history.error}</div>`; return; } if (history.length === 0) { historyList.innerHTML = '<div class="history-item">No history</div>'; return; } history.forEach(chat => { const item = document.createElement('div'); item.className = 'history-item'; item.innerHTML = `<div class="title">💬 ${chat.preview}</div><div class="date">${chat.start_time}</div>`; item.onclick = () => loadChat(chat.id); historyList.appendChild(item); }); } catch (e) { historyList.innerHTML = '<div class="history-item">Failed to load</div>'; } }
-        function loadChat(chatId) { toggleHistory(); document.getElementById('chat-box').innerHTML = '<div class="typing" id="typing-indicator">Agent is generating...</div>'; if(window.TermuxBridge) TermuxBridge.runCommand(`python3 ~/webui/db_reader.py get ${chatId}`, "handleLoadChat"); }
+        function loadChat(chatId) { toggleHistory(); clearChat(); if(window.TermuxBridge) TermuxBridge.runCommand(`/data/data/com.termux/files/usr/bin/python3 /data/data/com.termux/files/home/webui/db_reader.py get ${chatId}`, "handleLoadChat"); }
         function handleLoadChat(result) { try { const messages = JSON.parse(result); messages.forEach(msg => appendMessage(msg.role === 'user' ? 'user' : 'ai', msg.content)); } catch (e) {} }
     </script>
 </body>
