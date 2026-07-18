@@ -281,8 +281,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             wv.addJavascriptInterface(mGlobalBridge, "TermuxBridge"); // حقن الجسر
         }
 
-        // تعيين واجهة AI كواجهة نشطة افتراضية عند بدء التطبيق
-        mGlobalBridge.setActiveWebView(mAiWebView);
+        
         // إعداد Custom Lab (بدون جسر للأمان - Sandboxed)
         WebSettings customWs = mCustomWebView.getSettings();
         customWs.setJavaScriptEnabled(true);
@@ -294,6 +293,9 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         }
         mCustomWebView.setWebChromeClient(new WebChromeClient());
         // لا نضيف addJavascriptInterface هنا أبداً لحماية التطبيق!
+
+        // تعيين واجهة AI كواجهة نشطة افتراضية عند بدء التطبيق
+        mGlobalBridge.setActiveWebView(mAiWebView);
 
         // نسخ الملفات في الخلفية لمنع تجميد التطبيق
         new Thread(this::copyAssetsToTermux).start();
@@ -1217,7 +1219,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             mTerminalView.setVisibility(View.VISIBLE);
             mTerminalView.requestFocus();
             showTermuxToolbar(true);
-            mGlobalBridge.setActiveWebView(null); // فصل الجسر عن الويب
+            mGlobalBridge.setActiveWebView(null); // فصل الجسر
         } else {
             mTerminalView.setVisibility(View.GONE);
             targetWebView.setVisibility(View.VISIBLE);
@@ -1227,11 +1229,12 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         }
 
         drawer.closeDrawer(GravityCompat.START);
-   }
+    }
 
     /**
      * Show settings popup
     */
+
     private void showSettingsPopup() {
         android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
         WebView settingsWebView = new WebView(this);
@@ -1243,7 +1246,6 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             ws.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
         }
-        // استخدام الجسر الموحد وإعداد الويب فيو النشط
         settingsWebView.addJavascriptInterface(mGlobalBridge, "TermuxBridge");
         mGlobalBridge.setActiveWebView(settingsWebView); 
         settingsWebView.loadUrl("file://" + WEBUI_DIR + "/settings.html");
@@ -1254,7 +1256,6 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
                    startActivity(new Intent(android.provider.Settings.ACTION_SETTINGS));
                })
                .setNegativeButton("Close", (d, w) -> {
-                   // إعادة الويب فيو النشط للواجهة الأصلية عند الإغلاق
                    mGlobalBridge.setActiveWebView(mAiWebView); 
                })
                .setOnCancelListener(d -> {
@@ -1284,6 +1285,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         intent.addCategory(Intent.CATEGORY_OPENABLE);
         startActivityForResult(Intent.createChooser(intent, "Select File"), REQUEST_CODE_PICK_FILE);
     }
+    
 /**
     // استقبال الملف المختار وإرسال مساره للويب
     @Override
