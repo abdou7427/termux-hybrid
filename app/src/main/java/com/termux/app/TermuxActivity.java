@@ -281,6 +281,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             wv.addJavascriptInterface(mGlobalBridge, "TermuxBridge"); // حقن الجسر
         }
 
+        // تعيين واجهة AI كواجهة نشطة افتراضية عند بدء التطبيق
+        mGlobalBridge.setActiveWebView(mAiWebView);
         // إعداد Custom Lab (بدون جسر للأمان - Sandboxed)
         WebSettings customWs = mCustomWebView.getSettings();
         customWs.setJavaScriptEnabled(true);
