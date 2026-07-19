@@ -39,7 +39,7 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" tools:ignore="ProtectedPermissions" />
     <uses-permission android:name="com.android.alarm.permission.SET_ALARM" />
-    
+
     <!-- صلاحيات إضافية للوكيل (الصوت للإدخال، الكاميرا لفحص الملفات/الصور) -->
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
@@ -52,7 +52,8 @@
         android:label="@string/application_name"
         android:requestLegacyExternalStorage="true"
         android:roundIcon="@mipmap/ic_launcher_round"
-        android:supportsRtl="false"
+        android:supportsRtl="true"
+        android:usesCleartextTraffic="false"
         android:theme="@style/Theme.TermuxApp.DayNight.DarkActionBar"
         tools:targetApi="m">
 
@@ -203,7 +204,8 @@
         <!-- خدمات الأتمتة والوكيل -->
         <!-- ========================================== -->
 
-        <!-- خدمة إمكانية الوصول (تم تعديلها لتشير لملف الإعدادات) -->
+        <!-- خدمة إمكانية الوصول - exported=true مطلوب لظهورها في إعدادات النظام،
+             الحماية الفعلية عبر صلاحية BIND_ACCESSIBILITY_SERVICE المحصورة على النظام -->
         <service
             android:name=".HybridAccessibilityService"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
@@ -216,7 +218,8 @@
                 android:resource="@xml/accessibility_service_config" />
         </service>
 
-        <!-- خدمة الاستماع للإشعارات -->
+        <!-- خدمة الاستماع للإشعارات - نفس المبدأ: exported=true مطلوب،
+             الحماية عبر BIND_NOTIFICATION_LISTENER_SERVICE المحصورة على النظام -->
         <service
             android:name=".HybridNotificationService"
             android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
@@ -226,10 +229,11 @@
             </intent-filter>
         </service>
 
-        <!-- مستقبل إعادة التشغيل -->
+        <!-- مستقبل إعادة التشغيل - exported=false لمنع أي تطبيق آخر من استدعائه مباشرة
+             بـ Intent مزيّف؛ النظام يوصل بث BOOT_COMPLETED الفعلي بغض النظر عن هذا الإعداد -->
         <receiver
             android:name=".BootReceiver"
-            android:exported="true">
+            android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>
@@ -238,7 +242,7 @@
         <!-- ========================================== -->
         <!-- خدمات Termux الأصلية -->
         <!-- ========================================== -->
-        
+
         <service
             android:name=".app.TermuxService"
             android:exported="false" />
