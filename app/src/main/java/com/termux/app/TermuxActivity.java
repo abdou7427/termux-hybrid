@@ -73,6 +73,8 @@ import android.view.View;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
+import android.webkit.WebViewClient;
+import android.webkit.WebResourceRequest;
 import android.widget.LinearLayout;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.view.GravityCompat;
@@ -85,6 +87,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+
 
 /**
  * A terminal emulator activity.
@@ -211,6 +214,66 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     private static final String WEBUI_DIR = "/data/data/com.termux/files/home/webui";
 
+    // ==========================================================
+    // SECURITY: دالة موحدة لإعداد أي WebView حسب مستوى الثقة
+    // ==========================================================
+
+    // isTrusted = true  → واجهات محلية ثابتة فقط (ai_agent.html, control.html, settings.html)
+    // isTrusted = false → واجهات تلمس محتوى خارجي (custom.html, browser popup) - بلا جسر أبداً
+    private void configureWebViewSecurity(WebView wv, boolean isTrusted) {
+        WebSettings ws = wv.getSettings();
+        ws.setJavaScriptEnabled(true);
+        ws.setDomStorageEnabled(true);
+
+        // وصول الملفات المحلية يُسمح فقط للواجهات الموثوقة التي تحمّل file://
+        ws.setAllowFileAccess(isTrusted);
+        ws.setAllowContentAccess(isTrusted);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
+            ws.setAllowFileAccessFromFileURLs(false);
+            ws.setAllowUniversalAccessFromFileURLs(false);
+        }
+
+        // منع خلط المحتوى (http فوق https) نهائياً بدل ALWAYS_ALLOW
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            ws.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
+        }
+
+        // منع فتح نوافذ جديدة تلقائياً من صفحات غير موثوقة (popups/pop-unders)
+        ws.setSupportMultipleWindows(false);
+        ws.setJavaScriptCanOpenWindowsAutomatically(false);
+
+        wv.setWebChromeClient(new WebChromeClient());
+
+        if (isTrusted) {
+            // الجسر يُضاف فقط هنا: صفحات محلية ثابتة لا تُحمّل أبداً روابط خارجية
+            wv.addJavascriptInterface(mGlobalBridge, "TermuxBridge");
+        } else {
+            // custom.html + نافذة المتصفح: بلا جسر + قيود تنقّل صارمة
+            wv.removeJavascriptInterface("TermuxBridge"); // تأكيد إضافي أنه غير موجود
+            wv.setWebViewClient(buildIsolatedWebViewClient());
+        }
+    }
+
+    // يمنع أي محاولة قفز من صفحة خارجية إلى file:// أو content:// أو intent://
+    private WebViewClient buildIsolatedWebViewClient() {
+        return new WebViewClient() {
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+                String scheme = request.getUrl().getScheme();
+                if (scheme == null) return true; // ارفض أي شيء غامض
+                switch (scheme) {
+                    case "http":
+                    case "https":
+                    case "blob":
+                    case "about":
+                        return false; // اسمح، تنقل عادي
+                    default:
+                        return true; // امنع file:, content:, intent:, javascript:, ...
+                }
+            }
+        };
+    }
+
     private static final int CONTEXT_MENU_SELECT_URL_ID = 0;
     private static final int CONTEXT_MENU_SHARE_TRANSCRIPT_ID = 1;
     private static final int CONTEXT_MENU_SHARE_SELECTED_TEXT = 10;
@@ -266,33 +329,13 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         // إنشاء الجسر الموحد
         mGlobalBridge = new WebViewBridge(this);
 
-        // إعداد WebViews الموثوقة (AI, Control, Browser)
-        WebView[] trustedWebViews = {mAiWebView, mControlWebView, mBrowserWebView};
-        for (WebView wv : trustedWebViews) {
-            WebSettings ws = wv.getSettings();
-            ws.setJavaScriptEnabled(true);
-            ws.setDomStorageEnabled(true);
-            ws.setAllowFileAccess(true);
-            ws.setAllowContentAccess(true);
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                ws.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
-            }
-            wv.setWebChromeClient(new WebChromeClient());
-            wv.addJavascriptInterface(mGlobalBridge, "TermuxBridge"); // حقن الجسر
-        }
+        // === الواجهات الموثوقة (محلية ثابتة فقط) ===
+        configureWebViewSecurity(mAiWebView, true);
+        configureWebViewSecurity(mControlWebView, true);
 
-        
-        // إعداد Custom Lab (بدون جسر للأمان - Sandboxed)
-        WebSettings customWs = mCustomWebView.getSettings();
-        customWs.setJavaScriptEnabled(true);
-        customWs.setDomStorageEnabled(true);
-        customWs.setAllowFileAccess(true);
-        customWs.setAllowContentAccess(true);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            customWs.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
-        }
-        mCustomWebView.setWebChromeClient(new WebChromeClient());
-        // لا نضيف addJavascriptInterface هنا أبداً لحماية التطبيق!
+        // === الواجهات المعزولة (تصفح/أتمتة خارجية - بلا جسر) ===
+        configureWebViewSecurity(mCustomWebView, false);
+        configureWebViewSecurity(mBrowserWebView, false);
 
         // تعيين واجهة AI كواجهة نشطة افتراضية عند بدء التطبيق
         mGlobalBridge.setActiveWebView(mAiWebView);
@@ -318,6 +361,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         findViewById(R.id.btn_switch_to_custom_lab).setOnClickListener(v -> switchToView(mCustomWebView));
         findViewById(R.id.btn_switch_to_terminal).setOnClickListener(v -> switchToView(null));
         findViewById(R.id.settings_button).setOnClickListener(v -> showSettingsPopup());
+
         
         // ============================================================
         // END HYBRID SYSTEM
@@ -907,36 +951,38 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             requestStoragePermission(true);
         }
     }
-    
+
     private boolean handleFilePickerResult(int requestCode, int resultCode, Intent data) {
         if (requestCode == REQUEST_CODE_PICK_FILE && resultCode == RESULT_OK && data != null) {
             android.net.Uri uri = data.getData();
             if (uri != null) {
                 new Thread(() -> {
-                    try {
-                        String fileName = "uploaded_file_" + System.currentTimeMillis();
-                        File destFile = new File(WEBUI_DIR, fileName);
-                        InputStream in = getContentResolver().openInputStream(uri);
-                        FileOutputStream out = new FileOutputStream(destFile);
-                        byte[] buffer = new byte[1024];
+                    String fileName = "uploaded_" + java.util.UUID.randomUUID();
+                    File destFile = new File(WEBUI_DIR, fileName);
+                    try (InputStream in = getContentResolver().openInputStream(uri);
+                         FileOutputStream out = new FileOutputStream(destFile)) {
+                        if (in == null) return;
+                        byte[] buffer = new byte[8192];
                         int read;
+                        long total = 0;
+                        final long maxSize = 50L * 1024 * 1024; // حد 50MB لمنع استنزاف التخزين
                         while ((read = in.read(buffer)) != -1) {
+                            total += read;
+                            if (total > maxSize) { destFile.delete(); return; }
                             out.write(buffer, 0, read);
                         }
-                        in.close();
-                        out.close();
-                    
-                        String realPath = destFile.getAbsolutePath();
-                        mGlobalBridge.sendToWebViewDirect(pendingFileCallback, realPath);
+                        mGlobalBridge.sendToWebViewDirect(pendingFileCallback, destFile.getAbsolutePath());
                     } catch (Exception e) {
                         e.printStackTrace();
                     }
                 }).start();
             }
-            return true; // تم التعامل مع الحدث بنجاح
+            return true;
         }
-        return false; // الحدث لا يخص اختيار الملفات
+        return false;
     }
+    
+    
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
@@ -1152,46 +1198,60 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     /**
      * نسخ ملفات assets/webui/ → ~/webui في Termux
      */
+
+    private static final String KEY_ASSETS_VERSION = "assets_version";
+
     private void copyAssetsToTermux() {
         File destDir = new File(WEBUI_DIR);
         if (!destDir.exists()) destDir.mkdirs();
 
-        // أضفنا db_reader.py للقائمة ليتم نسخه مع ملفات الـ HTML
-        String[] files = {"ai_agent.html", "control.html", "custom.html", "settings.html", "db_reader.py"};
-        for (String file : files) {
-            File outFile = new File(destDir, file);
-            // ننسخ الملف فقط إذا لم يكن موجوداً مسبقاً، لحفظ تعديلات المستخدم المستقبلية
-            if (!outFile.exists()) {
-                try {
-                    InputStream in = getAssets().open("webui/" + file);
-                    FileOutputStream out = new FileOutputStream(outFile);
+        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        int installedVersion = prefs.getInt(KEY_ASSETS_VERSION, -1);
+        int currentVersion = BuildConfig.VERSION_CODE; // عدّل الحزمة إن لزم: com.termux.app.BuildConfig
+        boolean forceUpdate = installedVersion != currentVersion;
 
-                    byte[] buffer = new byte[1024];
-                    int read;
-                    while ((read = in.read(buffer)) != -1) {
-                        out.write(buffer, 0, read);
-                    }
-                    in.close();
-                    out.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
+        // الملفات الموثوقة يجب تحديثها إجبارياً مع كل إصدار جديد لضمان وصول إصلاحات الأمان
+        String[] trustedFiles = {"ai_agent.html", "control.html", "settings.html", "db_reader.py"};
+        for (String file : trustedFiles) {
+            copyAssetFile(file, destDir, forceUpdate);
+        }
+
+        // custom.html مخصصة لتعديلات المستخدم -> لا تُستبدل أبداً بعد أول تثبيت
+        copyAssetFile("custom.html", destDir, false);
+
+        if (forceUpdate) {
+            prefs.edit().putInt(KEY_ASSETS_VERSION, currentVersion).apply();
         }
     }
-    
+
+    private void copyAssetFile(String file, File destDir, boolean overwrite) {
+        File outFile = new File(destDir, file);
+        if (outFile.exists() && !overwrite) return;
+        try (InputStream in = getAssets().open("webui/" + file);
+             FileOutputStream out = new FileOutputStream(outFile)) {
+            byte[] buffer = new byte[4096];
+            int read;
+            while ((read = in.read(buffer)) != -1) {
+                out.write(buffer, 0, read);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
     
 
     /**
      * تحميل جميع WebViews من ~/webui
      */
+
     private void loadAllWebViews() {
         String base = "file://" + WEBUI_DIR + "/";
         mAiWebView.loadUrl(base + "ai_agent.html");
         mControlWebView.loadUrl(base + "control.html");
         mCustomWebView.loadUrl(base + "custom.html");
+        mBrowserWebView.loadUrl("about:blank"); // لا تحمّل شيئاً حتى يُطلب رابط صراحة
     }
-
+    
     /**
      * إظهار/إخفاء شريط Extra Keys
      */
@@ -1238,16 +1298,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     private void showSettingsPopup() {
         android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
         WebView settingsWebView = new WebView(this);
-        WebSettings ws = settingsWebView.getSettings();
-        ws.setJavaScriptEnabled(true);
-        ws.setDomStorageEnabled(true);
-        ws.setAllowFileAccess(true);
-        ws.setAllowContentAccess(true);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            ws.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
-        }
-        settingsWebView.addJavascriptInterface(mGlobalBridge, "TermuxBridge");
-        mGlobalBridge.setActiveWebView(settingsWebView); 
+        configureWebViewSecurity(settingsWebView, true); // محلي وموثوق مثل ai_agent/control
+        mGlobalBridge.setActiveWebView(settingsWebView);
         settingsWebView.loadUrl("file://" + WEBUI_DIR + "/settings.html");
 
         builder.setTitle("⚙️ Settings")
@@ -1256,7 +1308,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
                    startActivity(new Intent(android.provider.Settings.ACTION_SETTINGS));
                })
                .setNegativeButton("Close", (d, w) -> {
-                   mGlobalBridge.setActiveWebView(mAiWebView); 
+                   mGlobalBridge.setActiveWebView(mAiWebView);
                })
                .setOnCancelListener(d -> {
                    mGlobalBridge.setActiveWebView(mAiWebView);
@@ -1268,14 +1320,22 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
      /**
      * Open browser popup
      */
+
     public void openBrowserPopup(String url) {
+        if (url == null) return;
+        // اسمح فقط بروابط http/https أو blob (لمعاينة HTML من previewHtml)
+        if (!(url.startsWith("http://") || url.startsWith("https://") || url.startsWith("blob:"))) {
+            runOnUiThread(() -> android.widget.Toast.makeText(this, "رابط غير مسموح", android.widget.Toast.LENGTH_SHORT).show());
+            return;
+        }
         runOnUiThread(() -> {
-            showTermuxToolbar(false);  // ← إخفاء ESC / CTRL / ALT
+            showTermuxToolbar(false);
             mBrowserContainer.setVisibility(View.VISIBLE);
             mBrowserWebView.bringToFront();
             mBrowserWebView.loadUrl(url);
         });
     }
+    
 
     // تستدعى من WebViewBridge لفتح مدير الملفات
     public void requestFilePick(String callbackFunction) {
@@ -1286,36 +1346,5 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         startActivityForResult(Intent.createChooser(intent, "Select File"), REQUEST_CODE_PICK_FILE);
     }
     
-/**
-    // استقبال الملف المختار وإرسال مساره للويب
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == REQUEST_CODE_PICK_FILE && resultCode == RESULT_OK && data != null) {
-            android.net.Uri uri = data.getData();
-            if (uri != null) {
-                new Thread(() -> {
-                    try {
-                        String fileName = "uploaded_file_" + System.currentTimeMillis();
-                        File destFile = new File(WEBUI_DIR, fileName);
-                        InputStream in = getContentResolver().openInputStream(uri);
-                        FileOutputStream out = new FileOutputStream(destFile);
-                        byte[] buffer = new byte[1024];
-                        int read;
-                        while ((read = in.read(buffer)) != -1) {
-                            out.write(buffer, 0, read);
-                        }
-                        in.close();
-                        out.close();
-                    
-                        String realPath = destFile.getAbsolutePath();
-                        mGlobalBridge.sendToWebViewDirect(pendingFileCallback, realPath);
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-                }).start();
-            }
-        }
-    }
- */
+
 }
