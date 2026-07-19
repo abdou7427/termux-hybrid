@@ -1207,7 +1207,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
         SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
         int installedVersion = prefs.getInt(KEY_ASSETS_VERSION, -1);
-        int currentVersion = BuildConfig.VERSION_CODE; // عدّل الحزمة إن لزم: com.termux.app.BuildConfig
+        int currentVersion = getAppVersionCode();
         boolean forceUpdate = installedVersion != currentVersion;
 
         // الملفات الموثوقة يجب تحديثها إجبارياً مع كل إصدار جديد لضمان وصول إصلاحات الأمان
@@ -1223,6 +1223,23 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             prefs.edit().putInt(KEY_ASSETS_VERSION, currentVersion).apply();
         }
     }
+
+    // جلب رقم الإصدار عبر PackageManager وقت التشغيل - يعمل بغض النظر عن applicationId/namespace
+    // المُعرَّف بـ build.gradle، ويتجنب مشكلة "cannot find symbol: BuildConfig" نهائياً
+    private int getAppVersionCode() {
+        try {
+            android.content.pm.PackageInfo pInfo = getPackageManager().getPackageInfo(getPackageName(), 0);
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                return (int) pInfo.getLongVersionCode();
+            } else {
+                return pInfo.versionCode;
+            }
+        } catch (Exception e) {
+            return -1;
+        }
+    }
+
+    
 
     private void copyAssetFile(String file, File destDir, boolean overwrite) {
         File outFile = new File(destDir, file);
