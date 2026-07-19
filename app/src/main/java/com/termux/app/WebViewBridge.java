@@ -39,8 +39,7 @@ public class WebViewBridge {
         if (session != null) session.write(command + "\n");
     }
 
-    // تنفيذ أمر عام (يبقى مقصوراً على الواجهات الموثوقة control.html/settings.html فقط
-    // بما أن الجسر لم يعد يُضاف إلا للواجهات الموثوقة - انظر TermuxActivity)
+    // تنفيذ أمر عام دفعة واحدة - مخصص لواجهات التحكم الموثوقة (control.html / settings.html)
     @JavascriptInterface
     public void runCommand(final String command, final String callbackFunction) {
         if (command == null || command.isEmpty()) return;
@@ -48,6 +47,7 @@ public class WebViewBridge {
         runShell(command, callbackFunction, false);
     }
 
+    // تنفيذ أمر مع بث السطور لحظياً - مخصص لواجهة control.html (طرفية تفاعلية)
     @JavascriptInterface
     public void runCommandStream(final String command, final String callbackFunction) {
         if (command == null || command.isEmpty()) return;
@@ -55,25 +55,52 @@ public class WebViewBridge {
         runShell(command, callbackFunction, true);
     }
 
-    // مسار مخصص لرسائل الدردشة: النص يُمرَّر كوسيطة عبر بيئة العملية
-    // وليس مركّباً داخل سطر أوامر شل -> يقضي على shell injection نهائياً
+    // إرسال رسالة للوكيل مع بث كل سطر فور وصوله (بما فيها خطوات trace_step)
+    // القيم تُمرَّر كوسائط منفصلة لـ ProcessBuilder - بلا "sh -c" وبلا أي تركيب نصي = بلا حقن أوامر
     @JavascriptInterface
-    public void sendAgentMessage(final String prompt, final String translateChoice,
-                                  final String filePath, final String callbackFunction) {
+    public void sendAgentMessageStream(final String prompt, final String translateChoice,
+                                        final String filePath, final String callbackFunction) {
         if (!isSafeCallback(callbackFunction)) return;
         new Thread(() -> {
             try {
-                String shellPath = "/data/data/" + mActivity.getPackageName() + "/files/usr/bin/sh";
                 String home = "/data/data/" + mActivity.getPackageName() + "/files/home";
-                String script = home + "/webui/run_agent.sh";
-
-                // الوسائط تُمرَّر كعناصر منفصلة في المصفوفة -> لا يمر عبر "sh -c" مطلقاً
-                // بذلك $()، backticks، ; ، | تبقى نصاً حرفياً ولا تُفسَّر أبداً
                 ProcessBuilder pb = new ProcessBuilder(
-                        script,
+                        home + "/webui/run_agent.sh",
                         prompt == null ? "" : prompt,
                         "y".equals(translateChoice) ? "y" : "n",
                         filePath == null ? "" : filePath
+                );
+                pb.directory(new File(home));
+                pb.redirectErrorStream(true);
+                Process process = pb.start();
+
+                BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    sendToWebView(callbackFunction, line);
+                }
+                process.waitFor();
+                reader.close();
+                sendToWebView(callbackFunction, "__EXECUTION_DONE__");
+            } catch (Exception e) {
+                sendToWebView(callbackFunction, "__STREAM_ERROR__|||" + e.getMessage());
+                sendToWebView(callbackFunction, "__EXECUTION_DONE__");
+            }
+        }).start();
+    }
+
+    // ترجمة نص محدد مباشرة عبر وضع --translate في web_bridge.py (بلا إعادة تشغيل الأنبوب كامل)
+    @JavascriptInterface
+    public void translateText(final String text, final String targetLang, final String callbackFunction) {
+        if (!isSafeCallback(callbackFunction) || text == null || text.isEmpty()) return;
+        new Thread(() -> {
+            try {
+                String home = "/data/data/" + mActivity.getPackageName() + "/files/home";
+                ProcessBuilder pb = new ProcessBuilder(
+                        home + "/webui/run_agent.sh",
+                        "--translate",
+                        text,
+                        targetLang == null || targetLang.isEmpty() ? "ar" : targetLang
                 );
                 pb.directory(new File(home));
                 pb.redirectErrorStream(true);
@@ -87,14 +114,18 @@ public class WebViewBridge {
                 }
                 process.waitFor();
                 reader.close();
-                sendToWebView(callbackFunction, output.toString());
+
+                String result = output.toString().trim();
+                String marker = "__TRANSLATION__|||";
+                int idx = result.indexOf(marker);
+                sendToWebView(callbackFunction, idx >= 0 ? result.substring(idx + marker.length()) : result);
             } catch (Exception e) {
-                sendToWebView(callbackFunction, "Error: " + e.getMessage());
+                sendToWebView(callbackFunction, "خطأ في الترجمة");
             }
         }).start();
     }
 
-    // جلب سجل الدردشة: chatId يُتحقق أنه رقم فقط قبل أي استخدام
+    // جلب قائمة سجل المحادثات
     @JavascriptInterface
     public void getChatHistory(final String callbackFunction) {
         if (!isSafeCallback(callbackFunction)) return;
@@ -103,6 +134,7 @@ public class WebViewBridge {
         runShell(cmd, callbackFunction, false);
     }
 
+    // جلب محادثة محددة بمعرف رقمي فقط (يمنع حقن الأوامر عبر chatId)
     @JavascriptInterface
     public void getChatById(final String chatId, final String callbackFunction) {
         if (!isSafeCallback(callbackFunction)) return;
@@ -111,7 +143,7 @@ public class WebViewBridge {
             return;
         }
         String home = "/data/data/" + mActivity.getPackageName() + "/files/home";
-        String cmd = home + "/webui/db_reader.py get " + chatId; // آمن الآن: chatId رقمي مضمون
+        String cmd = home + "/webui/db_reader.py get " + chatId;
         runShell(cmd, callbackFunction, false);
     }
 
@@ -173,7 +205,7 @@ public class WebViewBridge {
     @JavascriptInterface
     public void openBrowser(String url) {
         if (url != null && !url.isEmpty()) {
-            mActivity.openBrowserPopup(url); // الفلترة الآن داخل openBrowserPopup نفسها
+            mActivity.openBrowserPopup(url);
         }
     }
 
@@ -201,7 +233,7 @@ public class WebViewBridge {
     public void toast(String message) {
         if (message == null) return;
         mActivity.runOnUiThread(() ->
-            android.widget.Toast.makeText(mActivity, message, android.widget.Toast.LENGTH_SHORT).show());
+                android.widget.Toast.makeText(mActivity, message, android.widget.Toast.LENGTH_SHORT).show());
     }
 
     // ==========================================
@@ -231,7 +263,7 @@ public class WebViewBridge {
                         .replace("\n", "\\n")
                         .replace("\r", "\\r")
                         .replace("\t", "\\t")
-                        .replace("</", "<\\/"); // يمنع كسر </script> لو وُلّد HTML لاحقاً
+                        .replace("</", "<\\/");
                 String js = "if(window." + callbackFunction + ") window." + callbackFunction + "(\"" + escapedResult + "\");";
                 mActiveWebView.evaluateJavascript(js, null);
             } catch (Exception e) {
