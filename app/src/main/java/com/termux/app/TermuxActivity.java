@@ -1211,7 +1211,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         boolean forceUpdate = installedVersion != currentVersion;
 
         // الملفات الموثوقة يجب تحديثها إجبارياً مع كل إصدار جديد لضمان وصول إصلاحات الأمان
-        String[] trustedFiles = {"ai_agent.html", "control.html", "settings.html", "db_reader.py"};
+        String[] trustedFiles = {"ai_agent.html", "control.html", "settings.html", "db_reader.py", "run_agent.sh"};
         for (String file : trustedFiles) {
             copyAssetFile(file, destDir, forceUpdate);
         }
@@ -1251,6 +1251,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             while ((read = in.read(buffer)) != -1) {
                 out.write(buffer, 0, read);
             }
+            if (file.endsWith(".sh")) {
+                outFile.setExecutable(true, true); // تنفيذ للمالك فقط
         } catch (IOException e) {
             e.printStackTrace();
         }
