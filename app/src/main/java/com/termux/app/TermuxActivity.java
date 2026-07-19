@@ -1253,6 +1253,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             }
             if (file.endsWith(".sh")) {
                 outFile.setExecutable(true, true); // تنفيذ للمالك فقط
+            }
         } catch (IOException e) {
             e.printStackTrace();
         }
