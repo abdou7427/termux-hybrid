@@ -37,7 +37,7 @@
 
         .msg-meta { font-size: 10px; color: var(--text-secondary); margin-bottom: 4px; padding: 0 4px; }
 
-        .bubble p { margin-bottom: 8px; line-height: 1.7; }
+        .bubble p { margin-bottom: 8px; line-height: 1.7; unicode-bidi: plaintext; }
         .bubble a { color: var(--accent); text-decoration: underline; cursor: pointer; }
 
         /* مؤشر آلة الطباعة أثناء توليد الرد */
@@ -52,7 +52,7 @@
         .thinking-details summary::before { content: "▶"; font-size: 9px; transition: transform .2s; }
         .thinking-details[open] summary::before { transform: rotate(90deg); }
         .thinking-details .steps-body { padding: 4px 10px 10px 10px; font-size: 12px; color: var(--text-secondary); border-top: 1px solid var(--border); max-height: 200px; overflow-y: auto; font-family: 'Courier New', monospace; }
-        .thinking-details .step-line { padding: 3px 0; border-bottom: 1px dashed rgba(255,255,255,0.05); white-space: pre-wrap; word-break: break-word; }
+        .thinking-details .step-line { padding: 3px 0; border-bottom: 1px dashed rgba(255,255,255,0.05); white-space: pre-wrap; word-break: break-word; text-align: left; }
         .thinking-details .step-line:last-child { border-bottom: none; }
 
         .code-block-wrapper { position: relative; margin: 10px 0; background: var(--code-bg); border-radius: 8px; overflow: hidden; border: 1px solid var(--border); }
@@ -289,6 +289,7 @@
 
             const bubble = document.createElement('div');
             bubble.className = 'bubble';
+            bubble.setAttribute('dir', 'auto');
             msgDiv.appendChild(bubble);
 
             chatBox.insertBefore(msgDiv, document.getElementById('typing-indicator'));
@@ -302,8 +303,8 @@
             return str.replace(/\x1b\[[0-9;]*m/g, '').replace(/\u001b\[[0-9;]*m/g, '');
         }
 
-        function handleAIStreamLine(line) {
-            if (line === "__EXECUTION_DONE__") {
+        function handleAIStreamLine(rawLine) {
+            if (rawLine === "__EXECUTION_DONE__") {
                 setGenerating(false);
                 if (activeStream && !activeStream.gotFinal) {
                     activeStream.bubble.textContent = 'تعذر توليد الرد. حاول مجدداً.';
@@ -314,41 +315,54 @@
                 return;
             }
 
-            if (line.startsWith("__STATUS_THINKING__")) {
+            // تنظيف أكواد ANSI أولاً لكل سطر قبل أي فحص للماركرات - يحمي من أي
+            // بايتات ألوان متسربة من trace_step قد تكسر مطابقة startsWith الصارمة
+            const line = stripAnsi(rawLine);
+
+            if (line.indexOf("__STATUS_THINKING__") !== -1) {
                 const s = document.querySelector('#typing-indicator span');
                 if (s) s.textContent = 'الوكيل يحلل الطلب';
                 return;
             }
-            if (line.startsWith("__STATUS_GENERATING__")) {
+            if (line.indexOf("__STATUS_GENERATING__") !== -1) {
                 const s = document.querySelector('#typing-indicator span');
                 if (s) s.textContent = 'الوكيل يكتب الرد';
                 return;
             }
-            if (line.startsWith("__FINAL_RESPONSE__|||")) {
+
+            const finalMarker = "__FINAL_RESPONSE__|||";
+            const finalIdx = line.indexOf(finalMarker);
+            if (finalIdx !== -1) {
                 const stream = ensureActiveStreamMessage();
-                const content = line.substring("__FINAL_RESPONSE__|||".length);
+                const content = line.substring(finalIdx + finalMarker.length);
                 messageStore[stream.id].original = content;
                 stream.gotFinal = true;
                 scrollToBottom(false);
                 typewriterReveal(stream, content);
                 return;
             }
-            if (line.startsWith("__TRANSLATION__|||")) {
+
+            const transMarker = "__TRANSLATION__|||";
+            const transIdx = line.indexOf(transMarker);
+            if (transIdx !== -1) {
                 if (activeStream) {
-                    messageStore[activeStream.id].translated = line.substring("__TRANSLATION__|||".length);
+                    messageStore[activeStream.id].translated = line.substring(transIdx + transMarker.length);
                 }
                 return;
             }
-            if (line.startsWith("__STREAM_ERROR__|||")) {
+
+            const errMarker = "__STREAM_ERROR__|||";
+            const errIdx = line.indexOf(errMarker);
+            if (errIdx !== -1) {
                 const stream = ensureActiveStreamMessage();
-                stream.bubble.innerHTML = '<span style="color:var(--danger)">⚠️ ' + line.substring("__STREAM_ERROR__|||".length) + '</span>';
+                stream.bubble.innerHTML = '<span style="color:var(--danger)">⚠️ ' + line.substring(errIdx + errMarker.length) + '</span>';
                 stream.gotFinal = true;
                 stream.msgDiv.appendChild(buildToolbar(stream.id));
                 return;
             }
 
-            // أي سطر آخر = خطوة فعلية من trace_step (شجرة ملوّنة بألوان ANSI)
-            const clean = stripAnsi(line).trim();
+            // أي سطر آخر = خطوة فعلية من trace_step
+            const clean = line.trim();
             if (!clean) return;
             const stream = ensureActiveStreamMessage();
             addThinkingStep(stream.details, clean);
@@ -416,6 +430,7 @@
 
             const bubble = document.createElement('div');
             bubble.className = 'bubble';
+            bubble.setAttribute('dir', 'auto');
 
             if (sender === 'ai') {
                 renderAiBubble(bubble, content);
@@ -552,7 +567,7 @@
                 return;
             }
             btn.disabled = true;
-            const cbName = '__translate_cb_' + id;
+            const cbName = '__translate_cb_' + id.replace(/-/g, '_');
             window[cbName] = function (result) {
                 data.translated = result;
                 data.showingTranslated = true;
@@ -589,6 +604,7 @@
             const body = details.querySelector('.steps-body');
             const line = document.createElement('div');
             line.className = 'step-line';
+            line.setAttribute('dir', 'auto');
             line.textContent = stepText;
             body.appendChild(line);
             body.scrollTop = body.scrollHeight;
