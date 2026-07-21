@@ -131,7 +131,7 @@ public class WebViewBridge {
         if (!isSafeCallback(callbackFunction)) return;
         String home = "/data/data/" + mActivity.getPackageName() + "/files/home";
         String python = "/data/data/" + mActivity.getPackageName() + "/files/usr/bin/python3";
-        String cmd = home + "/webui/db_reader.py list";
+        String cmd = python + " " + home + "/webui/db_reader.py list";
         runShell(cmd, callbackFunction, false);
     }
 
@@ -145,7 +145,7 @@ public class WebViewBridge {
         }
         String home = "/data/data/" + mActivity.getPackageName() + "/files/home";
         String python = "/data/data/" + mActivity.getPackageName() + "/files/usr/bin/python3";
-        String cmd = home + "/webui/db_reader.py get " + chatId;
+        String cmd = python + " " + home + "/webui/db_reader.py get " + chatId;
         runShell(cmd, callbackFunction, false);
     }
 
