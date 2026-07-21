@@ -130,6 +130,7 @@ public class WebViewBridge {
     public void getChatHistory(final String callbackFunction) {
         if (!isSafeCallback(callbackFunction)) return;
         String home = "/data/data/" + mActivity.getPackageName() + "/files/home";
+        String python = "/data/data/" + mActivity.getPackageName() + "/files/usr/bin/python3";
         String cmd = home + "/webui/db_reader.py list";
         runShell(cmd, callbackFunction, false);
     }
@@ -143,6 +144,7 @@ public class WebViewBridge {
             return;
         }
         String home = "/data/data/" + mActivity.getPackageName() + "/files/home";
+        String python = "/data/data/" + mActivity.getPackageName() + "/files/usr/bin/python3";
         String cmd = home + "/webui/db_reader.py get " + chatId;
         runShell(cmd, callbackFunction, false);
     }
