@@ -210,16 +210,16 @@
                 '<div class="empty-state" id="empty-state"><div class="icon">💬</div><h3>ابدأ محادثة جديدة</h3><p>اكتب رسالتك أو أرفق ملفاً، ووكيلك جاهز للمساعدة.</p></div>' +
                 '<div class="typing" id="typing-indicator"><span>الوكيل يفكر</span><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>';
             activeStream = null;
+            lastUserPrompt = null;
+            lastFilePath = null;
+            if (window.TermuxBridge) {
+                TermuxBridge.runCommand(
+                    "/data/data/com.termux/files/usr/bin/python3 /data/data/com.termux/files/home/agent_project/web_bridge.py --new-session",
+                    "handleSessionReset"
+                );
+            }
         }
-
-        function toggleAgent(action) {
-            let cmd = action === 'start'
-                ? 'nohup /data/data/com.termux/files/usr/bin/python3 /data/data/com.termux/files/home/agent_project/agent.py > /dev/null 2>&1 &'
-                : 'pkill -f agent.py';
-            if (window.TermuxBridge) TermuxBridge.runCommand(cmd, "handleAgentToggle");
-        }
-        function handleAgentToggle() { document.getElementById('agent-status').classList.toggle('online'); }
-
+        function handleSessionReset() { /* لا حاجة لأي إجراء - فقط تأكيد الاستلام */ }
         // ==========================================
         // إرسال / استقبال الرسائل
         // ==========================================
